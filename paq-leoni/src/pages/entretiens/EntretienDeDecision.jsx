@@ -412,41 +412,66 @@ export default function EntretienDeDecision() {
   };
 
   // ── Validation SL : création/modification + email aux destinataires ──
-  const handleSLValidation = async (destinatairesEmails) => {
-    setShowEmailModal(false);
-    setSaving(true);
-    try {
-      const entretienData = {
-        typeFaute: formData.typeFaute,
-        dateEntretien: formData.dateEntretien,
-        decision: formData.decision,
-        justification: formData.justification || "",
-        destinatairesEmails: destinatairesEmails,
-      };
+  // ── Validation SL : création/modification + email aux destinataires ──
+const handleSLValidation = async (destinatairesEmails) => {
+  console.log("=== handleSLValidation START ===");
+  console.log("Destinataires emails:", destinatairesEmails);
+  console.log("Current entretien ID:", currentEntretienId);
+  
+  setShowEmailModal(false);
+  setSaving(true);
+  try {
+    const entretienData = {
+      typeFaute: formData.typeFaute,
+      dateEntretien: formData.dateEntretien,
+      decision: formData.decision,
+      justification: formData.justification || "",
+      destinatairesEmails: destinatairesEmails,  // ✅ Inclure dans les données
+      messageOptionnel: "Convocation à l'entretien de décision"  // Optionnel
+    };
 
-      if (currentEntretienId) {
-        await entretienDecisionService.update(matricule, currentEntretienId, entretienData);
-        await entretienDecisionService.validerParSL(matricule, currentEntretienId, entretienData);
+    console.log("Données à envoyer:", entretienData);
+
+    let entretienId = currentEntretienId;
+
+    if (currentEntretienId) {
+      // ✅ Mise à jour
+      console.log("Mode UPDATE pour ID:", currentEntretienId);
+      await entretienDecisionService.update(matricule, currentEntretienId, entretienData);
+      console.log("Update effectué");
+      entretienId = currentEntretienId;
+    } else {
+      // ✅ Création
+      console.log("Mode CREATE");
+      const response = await entretienDecisionService.create(matricule, entretienData);
+      console.log("Création réponse:", response);
+      if (response?.data?.id) {
+        entretienId = response.data.id;
+        console.log("Entretien créé avec ID:", entretienId);
       } else {
-        const response = await entretienDecisionService.create(matricule, entretienData);
-        if (response?.data?.id) {
-          await entretienDecisionService.validerParSL(matricule, response.data.id, entretienData);
-        }
+        throw new Error("Aucun ID retourné après création");
       }
-
-      const nbDestinataires = destinatairesEmails.length;
-      setStatusMessage(`Entretien validé. Email envoyé à ${nbDestinataires} destinataire(s).`);
-      await showSuccessAlert("Entretien soumis", `L'email de convocation a été envoyé à ${nbDestinataires} destinataire(s).`);
-      localStorage.removeItem(`entretien-decision-draft-${matricule}`);
-      await loadAllEntretiens();
-      setTimeout(() => navigate(`/paq-dossier/${matricule}`), 1500);
-    } catch (err) {
-      console.error(err);
-      showErrorAlert("Enregistrement impossible", err.response?.data?.message || err.message);
-    } finally {
-      setSaving(false);
     }
-  };
+
+    // ✅ Appel de la validation SL avec TOUTES les données (y compris destinatairesEmails)
+    console.log("Appel validerParSL avec ID:", entretienId);
+    await entretienDecisionService.validerParSL(matricule, entretienId, entretienData);
+    console.log("Validation SL effectuée");
+
+    const nbDestinataires = destinatairesEmails.length;
+    setStatusMessage(`Entretien validé. Email envoyé à ${nbDestinataires} destinataire(s).`);
+    await showSuccessAlert("Entretien soumis", `L'email de convocation a été envoyé à ${nbDestinataires} destinataire(s).`);
+    localStorage.removeItem(`entretien-decision-draft-${matricule}`);
+    await loadAllEntretiens();
+    setTimeout(() => navigate(`/paq-dossier/${matricule}`), 1500);
+  } catch (err) {
+    console.error("❌ Erreur dans handleSLValidation:", err);
+    console.error("Détails erreur:", err.response?.data);
+    showErrorAlert("Enregistrement impossible", err.response?.data?.message || err.message);
+  } finally {
+    setSaving(false);
+  }
+};
 
   // ── Validation HP/SGL (1ère validation) ──
   const handleValidationHPSGL = async () => {

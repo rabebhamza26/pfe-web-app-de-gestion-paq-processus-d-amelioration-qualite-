@@ -433,7 +433,7 @@ const handleSubmit = async (e) => {
                     type="text"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="Ex : Plant Nord A"
+                    placeholder="Ex : choisir le nom du plant"
                     required
                     autoFocus
                   />

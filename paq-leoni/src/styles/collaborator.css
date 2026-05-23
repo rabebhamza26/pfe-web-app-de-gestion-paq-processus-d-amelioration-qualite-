@@ -680,3 +680,175 @@
     min-width: 0;
   }
 }
+
+/* Nouveau design pour l'évolution des entretiens */
+.evolution-panel {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.evolution-panel .panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.evolution-panel .panel-header h5 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.trend-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #ecfdf5;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+}
+
+.trend-arrow {
+  font-size: 0.875rem;
+}
+
+.trend-text {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #059669;
+}
+
+.trend-value {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #059669;
+}
+
+.evolution-chart-new {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chart-legend .legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.chart-legend .legend-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.bars-container {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  height: 220px;
+  gap: 0.5rem;
+  padding: 0 0.5rem;
+}
+
+.bar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  height: 100%;
+}
+
+.bar-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  max-width: 50px;
+  height: 180px;
+  background-color: #f3f4f6;
+  border-radius: 6px 6px 0 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.bar {
+  width: 100%;
+  min-height: 4px;
+  border-radius: 6px 6px 0 0;
+  transition: height 0.3s ease;
+}
+
+.bar-label {
+  margin-top: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.chart-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f3f4f6;
+}
+
+.footer-trend {
+  font-size: 0.75rem;
+  color: #059669;
+  font-weight: 500;
+}
+
+.footer-percentage {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #059669;
+  background: #ecfdf5;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+}
+
+.empty-chart {
+  width: 100%;
+  text-align: center;
+  padding: 2rem;
+  color: #9ca3af;
+}
+
+@media (max-width: 768px) {
+  .bars-container {
+    height: 180px;
+  }
+  
+  .bar-wrapper {
+    height: 140px;
+    max-width: 35px;
+  }
+  
+  .bar-label {
+    font-size: 0.7rem;
+  }
+  
+  .trend-text {
+    display: none;
+  }
+}

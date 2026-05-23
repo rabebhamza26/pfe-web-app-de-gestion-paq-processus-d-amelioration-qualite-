@@ -147,7 +147,6 @@ const buildDefaultForm = () => ({
   causesPrincipales: "",
   convention: "",
   planAction: "",
-  dateRequalification: "",
 });
 
 // ─── Composant principal ──────────────────────────────────────────────────────
@@ -156,6 +155,7 @@ export default function EntretienDeMesure() {
   const navigate = useNavigate();
 
   const [userRole, setUserRole] = useState(null);
+  const [userEmail, setUserEmail] = useState(null);
   const [collaborator, setCollaborator] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -190,55 +190,52 @@ export default function EntretienDeMesure() {
     if (userStr) {
       const user = JSON.parse(userStr);
       setUserRole(user.role);
+      setUserEmail(user.email || user.username);
     }
   }, []);
 
-const loadUsers = async () => {
-  try {
-    setLoadingUsers(true);
-    // Récupérer tous les emails
-    const response = await userService.getAllEmails();
-    console.log("Emails récupérés:", response.data);
-    
-    if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-      // Transformer les emails en objets pour l'affichage
-      const emailList = response.data.map(email => ({
-        email: email,
-        nomUtilisateur: email.split('@')[0] || email,
-        role: "UTILISATEUR"
-      }));
-      setUsersList(emailList);
-    } else {
-      // Fallback: essayer avec getAllUsersWithEmails
+  const loadUsers = async () => {
+    try {
+      setLoadingUsers(true);
+      const response = await userService.getAllEmails();
+      console.log("Emails récupérés:", response.data);
+      
+      if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+        const emailList = response.data.map(email => ({
+          email: email,
+          nomUtilisateur: email.split('@')[0] || email,
+          role: "UTILISATEUR"
+        }));
+        setUsersList(emailList);
+      } else {
+        try {
+          const usersResponse = await userService.getAllUsersWithEmails();
+          if (usersResponse.data && Array.isArray(usersResponse.data)) {
+            setUsersList(usersResponse.data);
+          } else {
+            setUsersList([]);
+          }
+        } catch (fallbackErr) {
+          console.error("Fallback erreur:", fallbackErr);
+          setUsersList([]);
+        }
+      }
+    } catch (err) {
+      console.error("Erreur chargement emails:", err);
       try {
-        const usersResponse = await userService.getAllUsersWithEmails();
-        if (usersResponse.data && Array.isArray(usersResponse.data)) {
-          setUsersList(usersResponse.data);
+        const fallbackResponse = await userService.getAllUsersWithEmails();
+        if (fallbackResponse.data && Array.isArray(fallbackResponse.data)) {
+          setUsersList(fallbackResponse.data);
         } else {
           setUsersList([]);
         }
-      } catch (fallbackErr) {
-        console.error("Fallback erreur:", fallbackErr);
+      } catch (finalErr) {
         setUsersList([]);
       }
+    } finally {
+      setLoadingUsers(false);
     }
-  } catch (err) {
-    console.error("Erreur chargement emails:", err);
-    // Dernier fallback
-    try {
-      const fallbackResponse = await userService.getAllUsersWithEmails();
-      if (fallbackResponse.data && Array.isArray(fallbackResponse.data)) {
-        setUsersList(fallbackResponse.data);
-      } else {
-        setUsersList([]);
-      }
-    } catch (finalErr) {
-      setUsersList([]);
-    }
-  } finally {
-    setLoadingUsers(false);
-  }
-};
+  };
 
   useEffect(() => {
     loadData();
@@ -310,27 +307,26 @@ const loadUsers = async () => {
     }
   };
 
- // ── Liste entretiens ──
-const loadAllEntretiens = async () => {
-  try {
-    const res = await entretienMesureService.getByMatricule(matricule);
-    const list = Array.isArray(res.data) ? res.data : [];
-    setEntretiensList(list);
-    if (list.length > 0) {
-      const dernier = list.sort((a, b) => new Date(b.dateCreation) - new Date(a.dateCreation))[0];
-      chargerEntretienDansFormulaire(dernier);
-      // ✅ Vérifier les noms des champs (valideSL, valideQM, valideSGL)
-      setValideSL(dernier.valideSL || false);
-      setValideQM(dernier.valideQM || false);
-      setValideSGL(dernier.valideSGL || false);
-      console.log("Statuts chargés - valideSL:", dernier.valideSL);
-    } else {
-      resetForm();
+  // ── Liste entretiens ──
+  const loadAllEntretiens = async () => {
+    try {
+      const res = await entretienMesureService.getByMatricule(matricule);
+      const list = Array.isArray(res.data) ? res.data : [];
+      setEntretiensList(list);
+      if (list.length > 0) {
+        const dernier = list.sort((a, b) => new Date(b.dateCreation) - new Date(a.dateCreation))[0];
+        chargerEntretienDansFormulaire(dernier);
+        setValideSL(dernier.valideSL || false);
+        setValideQM(dernier.valideQM || false);
+        setValideSGL(dernier.valideSGL || false);
+        console.log("Statuts chargés - valideSL:", dernier.valideSL);
+      } else {
+        resetForm();
+      }
+    } catch (err) {
+      console.warn("Impossible de charger les entretiens de mesure:", err);
     }
-  } catch (err) {
-    console.warn("Impossible de charger les entretiens de mesure:", err);
-  }
-};
+  };
 
   const chargerEntretienDansFormulaire = (entretien) => {
     if (!entretien) return;
@@ -341,7 +337,6 @@ const loadAllEntretiens = async () => {
       causesPrincipales: entretien.causesPrincipales || "",
       convention: entretien.convention || "",
       planAction: entretien.planAction || "",
-      dateRequalification: entretien.dateRequalification || "",
     });
     if (entretien.typeFaute && !typeOptions.includes(entretien.typeFaute)) {
       setTypeOptions(prev => [...prev, entretien.typeFaute]);
@@ -406,71 +401,108 @@ const loadAllEntretiens = async () => {
 
   // ── Validation des dates ──
   const validateDates = () => {
-    if (!formData.dateRequalification) return true;
-    const de = new Date(formData.dateEntretien);
-    const dr = new Date(formData.dateRequalification);
-    const mx = new Date(de);
-    mx.setDate(mx.getDate() + 7);
-    if (dr > mx) {
-      setError("La requalification doit être au maximum 7 jours après l'entretien");
+    if (!formData.dateEntretien) {
+      showErrorAlert("Date manquante", "Veuillez sélectionner une date d'entretien.");
       return false;
     }
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const entretienDate = new Date(formData.dateEntretien);
+    entretienDate.setHours(0, 0, 0, 0);
+    
+    if (entretienDate < today) {
+      showErrorAlert("Date invalide", "La date d'entretien ne peut pas être dans le passé.");
+      return false;
+    }
+    
     return true;
   };
 
- // ── Validation SL : création/modification + email QM_SEGMENT + SGL ──
-// ── Validation SL : création/modification + email ──
-// ── Validation SL : création/modification + email ──
-const handleSLValidation = async (destinatairesEmails) => {
-  setShowEmailModal(false);
-  setSaving(true);
-  try {
-    const entretienData = {
-      typeFaute: formData.typeFaute,
-      dateEntretien: formData.dateEntretien,
-      dateRequalification: formData.dateRequalification,
-      causesPrincipales: formData.causesPrincipales || "",
-      convention: formData.convention || "",
-      planAction: formData.planAction || "",
-      destinatairesEmails: destinatairesEmails,  // ✅ Envoyer le tableau directement
-    };
+  // ── Validation SL : création/modification + email (CORRIGÉE) ──
+  const handleSLValidation = async (destinatairesEmails) => {
+    setShowEmailModal(false);
+    setSaving(true);
+    setError("");
+    setStatusMessage("");
 
-    if (currentEntretienId) {
-      await entretienMesureService.update(matricule, currentEntretienId, entretienData);
-      await entretienMesureService.validerPremiere(matricule, currentEntretienId, entretienData);
-    } else {
-      const response = await entretienMesureService.create(matricule, entretienData);
-      if (response?.data?.id) {
-        await entretienMesureService.validerPremiere(matricule, response.data.id, entretienData);
-      }
+    // Vérifications requises
+    if (!formData.typeFaute) {
+      setError("Le type de faute est obligatoire");
+      setSaving(false);
+      return;
+    }
+    if (!formData.dateEntretien) {
+      setError("La date d'entretien est obligatoire");
+      setSaving(false);
+      return;
+    }
+    if (!validateDates()) {
+      setSaving(false);
+      return;
     }
 
-    const nbDestinataires = destinatairesEmails.length;
-    setStatusMessage(`Entretien validé. Email envoyé à ${nbDestinataires} destinataire(s).`);
-    await showSuccessAlert("Entretien soumis", `L'email de convocation a été envoyé à ${nbDestinataires} destinataire(s).`);
-    localStorage.removeItem(`entretien-mesure-draft-${matricule}`);
-    await loadAllEntretiens();
-    setTimeout(() => navigate(`/paq-dossier/${matricule}`), 1500);
-  } catch (err) {
-    console.error(err);
-    showErrorAlert("Enregistrement impossible", err.response?.data?.message || err.message);
-  } finally {
-    setSaving(false);
-  }
-};
+    try {
+      const entretienData = {
+        typeFaute: formData.typeFaute,
+        dateEntretien: formData.dateEntretien,
+        causesPrincipales: formData.causesPrincipales || "",
+        convention: formData.convention || "",
+        planAction: formData.planAction || "",
+        destinatairesEmails: destinatairesEmails,
+        expediteurEmail: userEmail || "sl@leoni.com"
+      };
+
+      let response;
+      if (currentEntretienId) {
+        // Mise à jour existante
+        response = await entretienMesureService.update(matricule, currentEntretienId, entretienData);
+        // Appel à l'API de validation qui déclenche l'envoi d'emails
+        await entretienMesureService.validerPremiere(matricule, currentEntretienId, entretienData);
+      } else {
+        // Création
+        response = await entretienMesureService.create(matricule, entretienData);
+        if (response?.data?.id) {
+          await entretienMesureService.validerPremiere(matricule, response.data.id, entretienData);
+        }
+      }
+
+      const nbDestinataires = destinatairesEmails.length;
+      setStatusMessage(`Entretien validé. Email envoyé à ${nbDestinataires} destinataire(s).`);
+      await showSuccessAlert(
+        "Entretien soumis", 
+        `L'entretien de mesure a été créé/validé et un email de convocation a été envoyé à ${nbDestinataires} destinataire(s).`
+      );
+      
+      localStorage.removeItem(`entretien-mesure-draft-${matricule}`);
+      await loadAllEntretiens();
+      setTimeout(() => navigate(`/paq-dossier/${matricule}`), 1500);
+    } catch (err) {
+      console.error("Erreur handleSLValidation:", err);
+      const errorMsg = err.response?.data?.message || err.message || "Erreur lors de l'envoi";
+      setError(errorMsg);
+      showErrorAlert("Enregistrement impossible", errorMsg);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // ── Validation QM_SEGMENT (1ère validation) ──
   const handleValidationQM = async () => {
     if (!validateDates()) return;
     setSaving(true);
+    setError("");
+    setStatusMessage("");
+
     try {
       const entretienData = {
         typeFaute: formData.typeFaute,
         dateEntretien: formData.dateEntretien,
-        dateRequalification: formData.dateRequalification,
         causesPrincipales: formData.causesPrincipales || "",
         convention: formData.convention || "",
         planAction: formData.planAction || "",
+        expediteurEmail: userEmail || "qm@leoni.com"
       };
 
       await entretienMesureService.valider1(matricule, currentEntretienId, entretienData);
@@ -497,14 +529,17 @@ const handleSLValidation = async (destinatairesEmails) => {
   const handleValidationSGL = async () => {
     if (!validateDates()) return;
     setSaving(true);
+    setError("");
+    setStatusMessage("");
+
     try {
       const entretienData = {
         typeFaute: formData.typeFaute,
         dateEntretien: formData.dateEntretien,
-        dateRequalification: formData.dateRequalification,
         causesPrincipales: formData.causesPrincipales || "",
         convention: formData.convention || "",
         planAction: formData.planAction || "",
+        expediteurEmail: userEmail || "sgl@leoni.com"
       };
 
       await entretienMesureService.valider2(matricule, currentEntretienId, entretienData);
@@ -513,7 +548,7 @@ const handleSLValidation = async (destinatairesEmails) => {
       setStatusMessage("Entretien de mesure validé (2ème validation SGL).");
       await showSuccessAlert(
         "Validation enregistrée",
-        "La validation SGL a été enregistrée"
+        "La validation SGL a été enregistrée et le PAQ passe au niveau 3."
       );
 
       localStorage.removeItem(`entretien-mesure-draft-${matricule}`);
@@ -534,10 +569,12 @@ const handleSLValidation = async (destinatairesEmails) => {
 
     if (!formData.typeFaute) {
       setError("Le type de faute est obligatoire");
+      showErrorAlert("Champ requis", "Le type de faute est obligatoire");
       return;
     }
     if (!formData.dateEntretien) {
       setError("La date d'entretien est obligatoire");
+      showErrorAlert("Champ requis", "La date d'entretien est obligatoire");
       return;
     }
 
@@ -575,7 +612,7 @@ const handleSLValidation = async (destinatairesEmails) => {
     }
   };
 
-  // ── Permissions ──────────────────────────────────────────────────────────────
+  // ── Permissions ──
   const canModify = userRole === "SL";
   const isEditable = userRole === "SL";
 
@@ -607,14 +644,6 @@ const handleSLValidation = async (destinatairesEmails) => {
     return d.toLocaleDateString("fr-FR");
   };
 
-  const getMaxDate = () => {
-    if (!formData.dateEntretien) return "";
-    const d = new Date(formData.dateEntretien);
-    d.setDate(d.getDate() + 7);
-    return d.toISOString().split("T")[0];
-  };
-
-  // ── Rendu ─────────────────────────────────────────────────────────────────────
   if (loading)
     return (
       <div className="leoni-loading">
@@ -810,7 +839,7 @@ const handleSLValidation = async (destinatairesEmails) => {
                   </div>
                 </div>
 
-                {/* Dates */}
+                {/* Date entretien */}
                 <div className="leoni-row2">
                   <div className="leoni-form-group" style={{ flex: 1 }}>
                     <label>Date entretien *</label>
@@ -823,20 +852,6 @@ const handleSLValidation = async (destinatairesEmails) => {
                       disabled={valideSGL || (!isEditable && userRole !== "QM_SEGMENT" && userRole !== "SGL")}
                       required
                     />
-                  </div>
-                  <div className="leoni-form-group" style={{ flex: 1 }}>
-                    <label>Date requalification</label>
-                    <input
-                      type="date"
-                      name="dateRequalification"
-                      value={formData.dateRequalification}
-                      onChange={handleChange}
-                      className="leoni-input"
-                      min={formData.dateEntretien}
-                      max={getMaxDate()}
-                      disabled={valideSGL || (!isEditable && userRole !== "QM_SEGMENT" && userRole !== "SGL")}
-                    />
-                    <small className="leoni-hint">Maximum 7 jours après l'entretien</small>
                   </div>
                 </div>
 
@@ -884,7 +899,6 @@ const handleSLValidation = async (destinatairesEmails) => {
 
                 {/* Barre d'actions */}
                 <div className="leoni-form-actions">
-                  
                   {showBrouillon && (
                     <button
                       type="button"

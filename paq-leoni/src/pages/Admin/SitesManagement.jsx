@@ -281,7 +281,7 @@ export default function SitesManagement() {
                     type="text"
                     value={form.name}
                     onChange={(e) => setForm({ name: e.target.value })}
-                    placeholder="Ex : Site Tunis Nord"
+                    placeholder="Ex : Saisie le nom de site"
                     required
                     autoFocus
                   />

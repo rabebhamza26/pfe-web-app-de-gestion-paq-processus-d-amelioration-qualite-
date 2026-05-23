@@ -15,13 +15,14 @@ const buildDefaultForm = () => ({
   description: "",
   mesuresCorrectives: "",
   commentaire: "",
+  defautGrave: false,
 });
 
 export default function EntretienExplicatif({ niveau = 1 }) {
   const { matricule } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isSL } = usePermissions();
+  const { isSL, isSGL } = usePermissions();
 
   const [collaborator, setCollaborator] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -31,6 +32,7 @@ export default function EntretienExplicatif({ niveau = 1 }) {
   const [error, setError] = useState("");
   const [currentEntretienId, setCurrentEntretienId] = useState(null);
   const [entretiensList, setEntretiensList] = useState([]);
+  const [isValidated, setIsValidated] = useState(false);
   
   const [showDefautModal, setShowDefautModal] = useState(false);
   const [defautTypeInput, setDefautTypeInput] = useState("");
@@ -42,8 +44,9 @@ export default function EntretienExplicatif({ niveau = 1 }) {
   const [filteredFautes, setFilteredFautes] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
 
-  // Vérifier si l'utilisateur peut modifier (SL uniquement)
-  const canModify = isSL;
+  // Vérifier les permissions : SL peut tout faire, SGL peut modifier et valider
+  const canModify = isSL || isSGL;
+  const canValidate = isSL || isSGL;
 
   useEffect(() => {
     const q = search.toLowerCase();
@@ -63,6 +66,7 @@ export default function EntretienExplicatif({ niveau = 1 }) {
   const resetForm = () => {
     setFormData(buildDefaultForm());
     setCurrentEntretienId(null);
+    setIsValidated(false);
     if (matricule) {
       localStorage.removeItem(`entretien-explicatif-draft-${matricule}`);
     }
@@ -99,6 +103,8 @@ export default function EntretienExplicatif({ niveau = 1 }) {
       if (list.length > 0) {
         const dernier = list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
         chargerEntretienDansFormulaire(dernier);
+        // Vérifier si l'entretien est déjà validé
+        setIsValidated(dernier.valide || false);
       }
     } catch (err) {
       console.warn("Impossible de charger les entretiens:", err);
@@ -115,6 +121,7 @@ export default function EntretienExplicatif({ niveau = 1 }) {
       description: entretien.description || "",
       mesuresCorrectives: entretien.mesuresCorrectives || "",
       commentaire: entretien.commentaire || "",
+      defautGrave: entretien.defautGrave || false,
     });
     
     if (entretien.typeFaute && !typeOptions.includes(entretien.typeFaute)) {
@@ -126,7 +133,7 @@ export default function EntretienExplicatif({ niveau = 1 }) {
 
   const handleChange = (e) => {
     if (!canModify) {
-      showErrorAlert("Permission refusée", "Seuls les SL peuvent modifier un entretien.");
+      showErrorAlert("Permission refusée", "Seuls les SL et SGL peuvent modifier un entretien.");
       return;
     }
     const { name, value } = e.target;
@@ -135,7 +142,7 @@ export default function EntretienExplicatif({ niveau = 1 }) {
 
   const addTypeOption = async () => {
     if (!canModify) {
-      showErrorAlert("Permission refusée", "Seuls les SL peuvent ajouter un type de faute.");
+      showErrorAlert("Permission refusée", "Seuls les SL et SGL peuvent ajouter un type de faute.");
       return;
     }
     const value = defautTypeInput.trim();
@@ -158,7 +165,7 @@ export default function EntretienExplicatif({ niveau = 1 }) {
 
   const handleModifier = async () => {
     if (!canModify) {
-      showErrorAlert("Permission refusée", "Seuls les SL peuvent modifier un entretien.");
+      showErrorAlert("Permission refusée", "Seuls les SL et SGL peuvent modifier un entretien.");
       return;
     }
     if (entretiensList.length === 0) {
@@ -172,7 +179,7 @@ export default function EntretienExplicatif({ niveau = 1 }) {
 
   const handleEnregistrer = () => {
     if (!canModify) {
-      showErrorAlert("Permission refusée", "Seuls les SL peuvent enregistrer un brouillon.");
+      showErrorAlert("Permission refusée", "Seuls les SL et SGL peuvent enregistrer un brouillon.");
       return;
     }
     setSavingDraft(true);
@@ -190,90 +197,115 @@ export default function EntretienExplicatif({ niveau = 1 }) {
   };
 
   // Création et validation en une seule action
-  // Création et validation en une seule action
-const handleCreateAndValidate = async () => {
-  setSaving(true);
-  setError("");
-  setStatusMessage("");
+  const handleCreateAndValidate = async () => {
+    setSaving(true);
+    setError("");
+    setStatusMessage("");
 
-  try {
-    const entretienData = {
-      notes: formData.commentaire || "",
-      date: formData.dateFaute,
-      typeFaute: formData.typeFaute,
-      description: formData.description,
-      mesuresCorrectives: formData.mesuresCorrectives,
-    };
+    try {
+      const entretienData = {
+        notes: formData.commentaire || "",
+        date: formData.dateFaute,
+        typeFaute: formData.typeFaute,
+        description: formData.description,
+        mesuresCorrectives: formData.mesuresCorrectives,
+        defautGrave: formData.defautGrave,
+      };
 
-    const response = await entretienService.create(matricule, entretienData);
-    
-    // Validation UNIQUEMENT pour la création
-    if (response && response.data && response.data.id) {
-      await entretienService.validate(response.data.id);
-      setStatusMessage("Entretien créé et validé avec succès.");
-      await showSuccessAlert("Entretien créé et validé", "L'entretien explicatif a été créé et validé avec succès.");
-    } else {
-      setStatusMessage("Entretien créé avec succès.");
-      await showSuccessAlert("Entretien créé", "L'entretien explicatif a été créé avec succès.");
+      const response = await entretienService.create(matricule, entretienData);
+      
+      // Validation UNIQUEMENT pour la création
+      if (response && response.data && response.data.id) {
+        await entretienService.validate(response.data.id);
+        setStatusMessage("Entretien créé et validé avec succès.");
+        await showSuccessAlert("Entretien créé et validé", "L'entretien explicatif a été créé et validé avec succès.");
+      } else {
+        setStatusMessage("Entretien créé avec succès.");
+        await showSuccessAlert("Entretien créé", "L'entretien explicatif a été créé avec succès.");
+      }
+
+      localStorage.removeItem(`entretien-explicatif-draft-${matricule}`);
+      await loadAllEntretiens();
+      setTimeout(() => navigate(`/paq-dossier/${matricule}`), 1500);
+    } catch (err) {
+      setError("Erreur : " + (err.response?.data?.message || err.message));
+      console.error(err);
+      showErrorAlert("Enregistrement impossible", err.response?.data?.message || err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Modification SANS validation supplémentaire
+  const handleUpdateOnly = async () => {
+    if (!currentEntretienId) {
+      setError("Aucun entretien à modifier.");
+      return;
     }
 
-    localStorage.removeItem(`entretien-explicatif-draft-${matricule}`);
-    await loadAllEntretiens();
-    setTimeout(() => navigate(`/paq-dossier/${matricule}`), 1500);
-  } catch (err) {
-    setError("Erreur : " + (err.response?.data?.message || err.message));
-    console.error(err);
-    showErrorAlert("Enregistrement impossible", err.response?.data?.message || err.message);
-  } finally {
-    setSaving(false);
-  }
-};
+    setSaving(true);
+    setError("");
+    setStatusMessage("");
 
-// Modification SANS validation supplémentaire
-const handleUpdateAndValidate = async () => {
-  if (!currentEntretienId) {
-    setError("Aucun entretien à modifier.");
-    return;
-  }
+    try {
+      const entretienData = {
+        notes: formData.commentaire || "",
+        date: formData.dateFaute,
+        typeFaute: formData.typeFaute,
+        description: formData.description,
+        mesuresCorrectives: formData.mesuresCorrectives,
+        defautGrave: formData.defautGrave,
+      };
 
-  setSaving(true);
-  setError("");
-  setStatusMessage("");
+      await entretienService.update(matricule, currentEntretienId, entretienData);
+      
+      setStatusMessage("Entretien modifié avec succès.");
+      await showSuccessAlert("Entretien modifié", "L'entretien explicatif a été modifié avec succès.");
 
-  try {
-    const entretienData = {
-      notes: formData.commentaire || "",
-      date: formData.dateFaute,
-      typeFaute: formData.typeFaute,
-      description: formData.description,
-      mesuresCorrectives: formData.mesuresCorrectives,
-    };
+      localStorage.removeItem(`entretien-explicatif-draft-${matricule}`);
+      await loadAllEntretiens();
+    } catch (err) {
+      setError("Erreur : " + (err.response?.data?.message || err.message));
+      console.error(err);
+      showErrorAlert("Modification impossible", err.response?.data?.message || err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
-    // UNIQUEMENT la mise à jour - PAS de validation supplémentaire
-    await entretienService.update(matricule, currentEntretienId, entretienData);
-    
-    setStatusMessage("Entretien modifié avec succès.");
-    await showSuccessAlert("Entretien modifié", "L'entretien explicatif a été modifié avec succès.");
+  // Validation seule (pour SGL)
+  const handleValidateOnly = async () => {
+    if (!currentEntretienId) {
+      setError("Aucun entretien à valider.");
+      return;
+    }
 
-    localStorage.removeItem(`entretien-explicatif-draft-${matricule}`);
-    await loadAllEntretiens();
-    setTimeout(() => navigate(`/paq-dossier/${matricule}`), 1500);
-  } catch (err) {
-    setError("Erreur : " + (err.response?.data?.message || err.message));
-    console.error(err);
-    showErrorAlert("Modification impossible", err.response?.data?.message || err.message);
-  } finally {
-    setSaving(false);
-  }
-};
+    setSaving(true);
+    setError("");
+    setStatusMessage("");
 
-  
+    try {
+      await entretienService.validate(currentEntretienId);
+      setIsValidated(true);
+      setStatusMessage("Entretien validé avec succès.");
+      await showSuccessAlert("Entretien validé", "L'entretien explicatif a été validé avec succès.");
+      
+      await loadAllEntretiens();
+      setTimeout(() => navigate(`/paq-dossier/${matricule}`), 1500);
+    } catch (err) {
+      setError("Erreur : " + (err.response?.data?.message || err.message));
+      console.error(err);
+      showErrorAlert("Validation impossible", err.response?.data?.message || err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!canModify) {
-      showErrorAlert("Permission refusée", "Seuls les SL peuvent créer ou modifier un entretien.");
+      showErrorAlert("Permission refusée", "Seuls les SL et SGL peuvent créer ou modifier un entretien.");
       return;
     }
 
@@ -288,7 +320,7 @@ const handleUpdateAndValidate = async () => {
     }
 
     if (currentEntretienId) {
-      await handleUpdateAndValidate();
+      await handleUpdateOnly();
     } else {
       await handleCreateAndValidate();
     }
@@ -332,8 +364,17 @@ const handleUpdateAndValidate = async () => {
         </div>
 
         <div className="leoni-header-actions">
+          {isSGL && !isSL && (
+            <span className="leoni-badge leoni-badge-warning">Mode SGL - Validation requise</span>
+          )}
+          {isSL && (
+            <span className="leoni-badge leoni-badge-success">Mode SL - Modification complète</span>
+          )}
           {!canModify && (
             <span className="leoni-badge leoni-badge-gray">Mode lecture seule</span>
+          )}
+          {isValidated && (
+            <span className="leoni-badge leoni-badge-info">✓ Entretien validé</span>
           )}
         </div>
       </div>
@@ -386,7 +427,7 @@ const handleUpdateAndValidate = async () => {
             <div className="leoni-card-body">
               <form id="entretien-explicatif-form" onSubmit={handleSubmit} className="leoni-form-stack">
                 <div className="leoni-form-group">
-                  <label>Type de faute *</label>
+                  <label>Type de faute </label>
                   <div className="leoni-inline">
                     {canModify && (
                       <button type="button" onClick={() => setShowDefautModal(true)} className="leoni-btn leoni-btn-warning leoni-btn-sm">
@@ -405,10 +446,10 @@ const handleUpdateAndValidate = async () => {
                         }}
                         onFocus={() => setShowDropdown(true)}
                         className="leoni-input"
-                        disabled={!canModify}
+                        disabled={!canModify || isValidated}
                         required
                       />
-                      {showDropdown && (
+                      {showDropdown && canModify && !isValidated && (
                         <div className="leoni-dropdown">
                           {filteredFautes.length > 0 ? (
                             filteredFautes.map((f, index) => (
@@ -430,14 +471,14 @@ const handleUpdateAndValidate = async () => {
                 </div>
 
                 <div className="leoni-form-group">
-                  <label>Date de l'entretien *</label>
+                  <label>Date de l'entretien </label>
                   <input 
                     type="date" 
                     name="dateFaute" 
                     value={formData.dateFaute} 
                     onChange={handleChange} 
                     className="leoni-input" 
-                    disabled={!canModify}
+                    disabled={!canModify || isValidated}
                     required
                   />
                 </div>
@@ -450,7 +491,7 @@ const handleUpdateAndValidate = async () => {
                     onChange={handleChange} 
                     className="leoni-textarea" 
                     rows="3" 
-                    disabled={!canModify} 
+                    disabled={!canModify || isValidated}
                   />
                 </div>
 
@@ -462,7 +503,7 @@ const handleUpdateAndValidate = async () => {
                     onChange={handleChange} 
                     className="leoni-textarea" 
                     rows="3" 
-                    disabled={!canModify} 
+                    disabled={!canModify || isValidated}
                   />
                 </div>
 
@@ -474,14 +515,67 @@ const handleUpdateAndValidate = async () => {
                     onChange={handleChange} 
                     className="leoni-textarea" 
                     rows="3" 
-                    disabled={!canModify} 
+                    disabled={!canModify || isValidated}
                   />
                 </div>
 
+                {/* Checkbox Défaut Grave */}
+                <div className="leoni-form-group">
+                  <div
+                    style={{
+                      background: formData.defautGrave ? "#2d1a1a" : "#1e1e2e",
+                      border: `1.5px solid ${formData.defautGrave ? "#ff4444" : "#444"}`,
+                      borderRadius: "8px",
+                      padding: "12px 16px",
+                    }}
+                  >
+                    <label
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        cursor: canModify && !isValidated ? "pointer" : "default",
+                        color: formData.defautGrave ? "#ff6b6b" : "#ccc",
+                        fontWeight: "600",
+                        marginBottom: 0,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.defautGrave}
+                        disabled={!canModify || isValidated}
+                        onChange={(e) => {
+                          if (!canModify || isValidated) return;
+                          setFormData((prev) => ({ ...prev, defautGrave: e.target.checked }));
+                        }}
+                        style={{ width: "16px", height: "16px", accentColor: "#ff4444" }}
+                      />
+                      ⚠️ Défaut grave – Activation immédiate SGL obligatoire
+                      (contourne la progression normale)
+                    </label>
+
+                    {formData.defautGrave && (
+                      <div
+                        style={{
+                          marginTop: "8px",
+                          padding: "8px 12px",
+                          background: "#2a2000",
+                          border: "1px solid #ffaa00",
+                          borderRadius: "6px",
+                          color: "#ffcc44",
+                          fontSize: "13px",
+                        }}
+                      >
+                        ⚠ Si coché, le SGL sera automatiquement notifié et devra
+                        participer dès ce niveau 1.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div className="leoni-form-actions">
-                  {canModify && (
+                  {canModify && !isValidated && (
                     <>
-                     
                       <button 
                         type="button" 
                         onClick={handleEnregistrer} 
@@ -495,13 +589,32 @@ const handleUpdateAndValidate = async () => {
                         className="leoni-btn leoni-btn-primary" 
                         disabled={saving}
                       >
-                        {saving ? "Validation..." : (currentEntretienId ? "Modifier et valider" : "Créer et valider")}
+                        {saving ? "Validation..." : (currentEntretienId ? "Modifier" : "Créer et valider")}
                       </button>
                     </>
                   )}
-                  {!canModify && (
+                  
+                  {/* Bouton de validation séparé pour SGL */}
+                  {isSGL && currentEntretienId && !isValidated && (
+                    <button
+                      type="button"
+                      onClick={handleValidateOnly}
+                      className="leoni-btn leoni-btn-success"
+                      disabled={saving}
+                    >
+                      {saving ? "Validation..." : "✓ Valider l'entretien"}
+                    </button>
+                  )}
+                  
+                  {!canModify && !isSGL && (
                     <div className="leoni-readonly-message">
                       Vous n'avez pas les droits pour modifier cet entretien.
+                    </div>
+                  )}
+                  
+                  {isValidated && (
+                    <div className="leoni-readonly-message leoni-readonly-success">
+                      ✓ Cet entretien a déjà été validé. Aucune modification n'est possible.
                     </div>
                   )}
                 </div>

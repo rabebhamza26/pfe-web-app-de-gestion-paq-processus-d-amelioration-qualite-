@@ -45,15 +45,17 @@ API.interceptors.response.use(
 
 // ------------------ dashboard Service ------------------
 export const dashboardService = {
- getStats: (params = {}) =>
-    API.get("/api/dashboard/stats", { params }),
-  getSegmentStats: (params = {}) =>
-    API.get("/api/dashboard/segment-stats", { params }),
-  getPerformanceHistory: (params = {}) =>
-    API.get("/api/dashboard/performance-history", { params }),
-  exportReport: (format, params = {}) =>
-    API.get(`/api/dashboard/export/${format}`, { responseType: "blob", params }),
+
+    getStats: (params) => API.get('/api/dashboard/stats', { params }),
+    getEntretiensTotals: (params) => API.get('/api/dashboard/entretiens/totals', { params }),
+    getEntretiensEvolution: (params) => API.get('/api/dashboard/entretiens/evolution', { params }),
+    exportReport: (format, params) => API.get(`/api/dashboard/export/${format}`, { params, responseType: 'blob' })
 };
+
+
+  
+
+
 
 // ------------------ Auth Service ------------------
 export const authService = {
@@ -334,7 +336,67 @@ export const fauteService = {
   create: (data) => API.post("/api/fautes", data),
 };
 
+export const qualificationService = {
+    getAll: () => API.get("/api/qualification"),
+    getPending: () => API.get("/api/qualification/pending"),
+    getByMatricule: (matricule) => API.get(`/api/qualification/collaborateur/${matricule}`),
+    forcerEnvoi: (id) => API.post(`/api/qualification/${id}/forcer-envoi`),
+};
 
 
-// ✅ Export par défaut - utilisez 'API' (majuscules)
+
+export const passwordResetService = {
+    /**
+     * Demande de réinitialisation de mot de passe
+     * @param {string} email - Adresse email de l'utilisateur
+     * @returns {Promise}
+     */
+    forgotPassword: async (email) => {
+        try {
+            const response = await API.post('/api/auth/forgot-password', { email });
+            return response.data;
+        } catch (error) {
+            console.error('Erreur forgotPassword:', error);
+            throw error.response?.data || { success: false, message: 'Erreur de connexion' };
+        }
+    },
+
+    /**
+     * Valide un token de réinitialisation
+     * @param {string} token - Token de réinitialisation
+     * @returns {Promise}
+     */
+    validateResetToken: async (token) => {
+        try {
+            const response = await API.get(`/api/auth/validate-reset-token?token=${token}`);
+            return response.data;
+        } catch (error) {
+            console.error('Erreur validateToken:', error);
+            throw error.response?.data || { success: false, message: 'Token invalide' };
+        }
+    },
+
+    /**
+     * Réinitialise le mot de passe
+     * @param {string} token - Token de réinitialisation
+     * @param {string} newPassword - Nouveau mot de passe
+     * @param {string} confirmPassword - Confirmation du mot de passe
+     * @returns {Promise}
+     */
+    resetPassword: async (token, newPassword, confirmPassword) => {
+        try {
+            const response = await API.post('/api/auth/reset-password', {
+                token,
+                newPassword,
+                confirmPassword
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Erreur resetPassword:', error);
+            throw error.response?.data || { success: false, message: 'Erreur lors de la réinitialisation' };
+        }
+    }
+};
+
+
 export default API;

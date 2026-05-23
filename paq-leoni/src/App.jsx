@@ -34,6 +34,10 @@ import { NotificationProvider } from "./context/NotificationContext";
 import { useAuth } from "./context/AuthContext"; 
 import { useI18n } from "./context/I18nContext";
 import { SelectionProvider } from "./context/SelectionContext";
+import QualificationDashboard from "./pages/QualificationDashboard";
+import ResetPassword from "./components/ResetPassword";
+
+
 
 
 function App() {
@@ -82,6 +86,10 @@ function App() {
             <Route path="notifications" element={<Notifications />} />
             <Route path="notifications/:matricule" element={<Notifications />} />
             <Route path="archive" element={<Archive />} />
+<Route path="/qualification" element={<QualificationDashboard />} />
+<Route path="/reset-password" element={<ResetPassword />} />
+
+
           </Route>
 
           <Route path="/admin" element={<AdminLayout />}>
