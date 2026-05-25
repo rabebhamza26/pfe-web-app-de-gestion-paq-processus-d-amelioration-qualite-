@@ -1,11 +1,10 @@
 package com.polytech.paqbackend.controller;
 
 import com.polytech.paqbackend.dto.DashboardStatsDTO;
-import com.polytech.paqbackend.dto.SegmentStatsDTO;
-import com.polytech.paqbackend.dto.PerformanceHistoryDTO;
+import com.polytech.paqbackend.dto.EntretienEvolutionDTO;
+import com.polytech.paqbackend.dto.EntretiensTotalsDTO;
 import com.polytech.paqbackend.service.DashboardService;
 import com.polytech.paqbackend.service.ExportService;
-
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpHeaders;
@@ -15,6 +14,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/dashboard")
+@SuppressWarnings({"unused", "WeakerAccess"})
 public class DashboardController {
 
     private final DashboardService dashboardService;
@@ -26,24 +26,24 @@ public class DashboardController {
     }
 
     @GetMapping("/stats")
-    public DashboardStatsDTO getStats(
+    public ResponseEntity<DashboardStatsDTO> getStats(
             @RequestParam(required = false) Long siteId,
             @RequestParam(required = false) Long plantId) {
-        return dashboardService.getStats(siteId, plantId);
+        return ResponseEntity.ok(dashboardService.getStats(siteId, plantId));
     }
 
-    @GetMapping("/segment-stats")
-    public List<SegmentStatsDTO> getSegmentStats(
+    @GetMapping("/entretiens/totals")
+    public ResponseEntity<EntretiensTotalsDTO> getEntretiensTotals(
             @RequestParam(required = false) Long siteId,
             @RequestParam(required = false) Long plantId) {
-        return dashboardService.getSegmentStats(siteId, plantId);
+        return ResponseEntity.ok(dashboardService.getEntretiensTotals(siteId, plantId));
     }
 
-    @GetMapping("/performance-history")
-    public List<PerformanceHistoryDTO> getPerformanceHistory(
+    @GetMapping("/entretiens/evolution")
+    public ResponseEntity<List<EntretienEvolutionDTO>> getEntretiensEvolution(
             @RequestParam(required = false) Long siteId,
             @RequestParam(required = false) Long plantId) {
-        return dashboardService.getPerformanceHistory(siteId, plantId);
+        return ResponseEntity.ok(dashboardService.getEntretiensEvolution(siteId, plantId));
     }
 
     @GetMapping("/export/{format}")
@@ -65,7 +65,7 @@ public class DashboardController {
                 filename = "rapport-semestriel.xlsx";
                 contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
             } else {
-                throw new IllegalArgumentException("Format non supporté: " + format);
+                return ResponseEntity.badRequest().build();
             }
 
             HttpHeaders headers = new HttpHeaders();
@@ -73,10 +73,7 @@ public class DashboardController {
             headers.setContentDispositionFormData("attachment", filename);
             headers.setContentLength(reportData.length);
 
-            return ResponseEntity.ok()
-                    .headers(headers)
-                    .body(reportData);
-
+            return ResponseEntity.ok().headers(headers).body(reportData);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }

@@ -36,7 +36,7 @@ public enum Role {
 
     /**
      * SGL — Chef de segment
-     * Explicatif : Créer / Modifier / Supprimer / Valider (obligatoire défaut grave)
+     * Explicatif :  Valider (obligatoire défaut grave)
      * Mesure     : Modifier / Supprimer / Valider (2e)
      * Décision   : Valider (1re)
      */
@@ -44,7 +44,9 @@ public enum Role {
             USER_READ,
             PAQ_READ,
             COLLABORATEUR_READ,
+            EXPLICATIF_UPDATE,
            EXPLICATIF_READ,
+            EXPLICATIF_VALIDATE,
             ACCORD_READ,
             MESURE_UPDATE, MESURE_VALIDATE_2, MESURE_READ,
             DECISION_VALIDATE_1, DECISION_READ,

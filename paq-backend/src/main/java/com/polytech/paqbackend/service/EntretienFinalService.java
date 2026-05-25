@@ -152,6 +152,9 @@ public class EntretienFinalService {
         entretien.setTypeFaute(dto.getTypeFaute());
         entretien.setCommentaireRH(dto.getCommentaireRH());
 
+        entretien.setCasca(dto.getCasca()); // NOUVEAU
+
+
         EntretienFinal saved = entretienFinalRepository.save(entretien);
 
         // Ne mettre à jour le niveau que si c'est un nouvel entretien (niveau 4)
@@ -185,6 +188,8 @@ public class EntretienFinalService {
         existing.setDateEntretien(dto.getDateEntretien());
         existing.setTypeFaute(dto.getTypeFaute());
         existing.setCommentaireRH(dto.getCommentaireRH());
+        existing.setCasca(dto.getCasca()); // NOUVEAU
+
 
         EntretienFinal updated = entretienFinalRepository.save(existing);
 

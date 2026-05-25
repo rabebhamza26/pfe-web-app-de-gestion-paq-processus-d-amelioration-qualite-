@@ -18,35 +18,97 @@ import "../../styles/entretien-decision.css";
 import "../../styles/paq-dossier.css";
 import { showErrorAlert, showInfoToast, showSuccessAlert, showSuccessToast } from "../../utils/entretienAlerts";
 
-// ─── Modal Email pour sélection multiple (SL) ─────────────────────────────
-function EmailModal({ isOpen, onClose, onConfirm, usersList, loadingUsers }) {
+// ─── Modal Email pour sélection multiple (SL) avec séparation HP, SGL, QM_PLANT ───
+function EmailModal({ isOpen, onClose, onConfirm, hpEmails, sglEmails, qmPlantEmails, loadingEmails }) {
   const [selectedEmails, setSelectedEmails] = useState([]);
+  const [selectedHpEmails, setSelectedHpEmails] = useState([]);
+  const [selectedSglEmails, setSelectedSglEmails] = useState([]);
+  const [selectedQmPlantEmails, setSelectedQmPlantEmails] = useState([]);
+  const [selectAllHp, setSelectAllHp] = useState(false);
+  const [selectAllSgl, setSelectAllSgl] = useState(false);
+  const [selectAllQmPlant, setSelectAllQmPlant] = useState(false);
+
+  // Mise à jour de la sélection totale
+  useEffect(() => {
+    const allSelected = [...selectedHpEmails, ...selectedSglEmails, ...selectedQmPlantEmails];
+    setSelectedEmails(allSelected);
+  }, [selectedHpEmails, selectedSglEmails, selectedQmPlantEmails]);
+
+  // Mise à jour des boutons "Tout sélectionner"
+  useEffect(() => {
+    if (hpEmails.length > 0) {
+      setSelectAllHp(selectedHpEmails.length === hpEmails.length);
+    }
+  }, [selectedHpEmails, hpEmails]);
 
   useEffect(() => {
+    if (sglEmails.length > 0) {
+      setSelectAllSgl(selectedSglEmails.length === sglEmails.length);
+    }
+  }, [selectedSglEmails, sglEmails]);
+
+  useEffect(() => {
+    if (qmPlantEmails.length > 0) {
+      setSelectAllQmPlant(selectedQmPlantEmails.length === qmPlantEmails.length);
+    }
+  }, [selectedQmPlantEmails, qmPlantEmails]);
+
+  // Réinitialisation quand la modal s'ouvre
+  useEffect(() => {
     if (isOpen) {
+      setSelectedHpEmails([]);
+      setSelectedSglEmails([]);
+      setSelectedQmPlantEmails([]);
       setSelectedEmails([]);
+      setSelectAllHp(false);
+      setSelectAllSgl(false);
+      setSelectAllQmPlant(false);
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const toggleEmailSelection = (email) => {
-    if (selectedEmails.includes(email)) {
-      setSelectedEmails(selectedEmails.filter(e => e !== email));
+  const toggleHpEmail = (email) => {
+    setSelectedHpEmails(prev => 
+      prev.includes(email) ? prev.filter(e => e !== email) : [...prev, email]
+    );
+  };
+
+  const toggleSglEmail = (email) => {
+    setSelectedSglEmails(prev => 
+      prev.includes(email) ? prev.filter(e => e !== email) : [...prev, email]
+    );
+  };
+
+  const toggleQmPlantEmail = (email) => {
+    setSelectedQmPlantEmails(prev => 
+      prev.includes(email) ? prev.filter(e => e !== email) : [...prev, email]
+    );
+  };
+
+  const toggleAllHp = () => {
+    if (selectAllHp) {
+      setSelectedHpEmails([]);
     } else {
-      setSelectedEmails([...selectedEmails, email]);
+      setSelectedHpEmails([...hpEmails]);
     }
   };
 
-  const toggleAllEmails = () => {
-    if (selectedEmails.length === usersList.length && usersList.length > 0) {
-      setSelectedEmails([]);
+  const toggleAllSgl = () => {
+    if (selectAllSgl) {
+      setSelectedSglEmails([]);
     } else {
-      setSelectedEmails(usersList.map(u => u.email));
+      setSelectedSglEmails([...sglEmails]);
     }
   };
 
-  const allSelected = usersList.length > 0 && selectedEmails.length === usersList.length;
+  const toggleAllQmPlant = () => {
+    if (selectAllQmPlant) {
+      setSelectedQmPlantEmails([]);
+    } else {
+      setSelectedQmPlantEmails([...qmPlantEmails]);
+    }
+  };
 
   return (
     <div className="leoni-modal-overlay" onClick={onClose}>
@@ -60,63 +122,188 @@ function EmailModal({ isOpen, onClose, onConfirm, usersList, loadingUsers }) {
         </div>
 
         <div className="leoni-modal-body">
-          <div style={{ marginBottom: 20, border: "1px solid #e2e8f0", borderRadius: "8px", overflow: "hidden" }}>
-            <div style={{ 
-              padding: "12px", 
-              background: "#f8f9fa", 
-              borderBottom: "1px solid #e2e8f0",
-              display: "flex",
-              alignItems: "center",
-              gap: "12px"
-            }}>
-              <input
-                type="checkbox"
-                checked={allSelected}
-                onChange={toggleAllEmails}
-                style={{ width: "18px", height: "18px", cursor: "pointer" }}
-              />
-              <strong style={{ flex: 1 }}>Sélectionner tous les {usersList.length} utilisateur(s)</strong>
-              <span style={{ fontSize: "12px", color: "#666" }}>
-                {selectedEmails.length} sélectionné(s)
-              </span>
+          {loadingEmails ? (
+            <div style={{ padding: "40px", textAlign: "center", color: "#999" }}>
+              <div className="leoni-spinner" style={{ margin: "0 auto 10px" }}></div>
+              Chargement des emails...
             </div>
-            <div style={{ maxHeight: "300px", overflow: "auto" }}>
-              {usersList.length > 0 ? (
-                usersList.map((user, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      padding: "12px",
-                      borderBottom: "1px solid #e2e8f0",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                      background: selectedEmails.includes(user.email) ? "#f0f9ff" : "white",
-                      cursor: "pointer"
-                    }}
-                    onClick={() => toggleEmailSelection(user.email)}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedEmails.includes(user.email)}
-                      onChange={() => toggleEmailSelection(user.email)}
-                      style={{ width: "18px", height: "18px", cursor: "pointer" }}
-                    />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 500, color: "#1a202c" }}>{user.email}</div>
-                      <div style={{ fontSize: "12px", color: "#718096" }}>
-                        {user.nomUtilisateur || user.email.split('@')[0]} • Rôle: <strong>{user.role || "Utilisateur"}</strong>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div style={{ padding: "40px", textAlign: "center", color: "#999" }}>
-                  {loadingUsers ? "Chargement des emails..." : "Aucun email trouvé dans la base de données"}
+          ) : (
+            <>
+              {/* Section HP */}
+              <div style={{ marginBottom: 20, border: "1px solid #e2e8f0", borderRadius: "8px", overflow: "hidden" }}>
+                <div style={{ 
+                  padding: "12px", 
+                  background: "#f0f9ff", 
+                  borderBottom: "1px solid #e2e8f0",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px"
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={selectAllHp}
+                    onChange={toggleAllHp}
+                    style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                    disabled={hpEmails.length === 0}
+                  />
+                  <strong style={{ flex: 1 }}>HP ({hpEmails.length})</strong>
+                  <span style={{ fontSize: "12px", color: "#666" }}>
+                    {selectedHpEmails.length} sélectionné(s)
+                  </span>
                 </div>
-              )}
-            </div>
-          </div>
+                <div style={{ maxHeight: "150px", overflow: "auto" }}>
+                  {hpEmails.length > 0 ? (
+                    hpEmails.map((email, idx) => (
+                      <div
+                        key={`hp-${idx}`}
+                        style={{
+                          padding: "12px",
+                          borderBottom: "1px solid #e2e8f0",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                          background: selectedHpEmails.includes(email) ? "#e6f7ff" : "white",
+                          cursor: "pointer"
+                        }}
+                        onClick={() => toggleHpEmail(email)}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedHpEmails.includes(email)}
+                          onChange={() => toggleHpEmail(email)}
+                          style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 500, color: "#1a202c" }}>{email}</div>
+                          <div style={{ fontSize: "12px", color: "#3182ce" }}>HP</div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ padding: "20px", textAlign: "center", color: "#999" }}>
+                      Aucun HP trouvé dans votre périmètre
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Section SGL */}
+              <div style={{ marginBottom: 20, border: "1px solid #e2e8f0", borderRadius: "8px", overflow: "hidden" }}>
+                <div style={{ 
+                  padding: "12px", 
+                  background: "#f0fff4", 
+                  borderBottom: "1px solid #e2e8f0",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px"
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={selectAllSgl}
+                    onChange={toggleAllSgl}
+                    style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                    disabled={sglEmails.length === 0}
+                  />
+                  <strong style={{ flex: 1 }}>SGL ({sglEmails.length})</strong>
+                  <span style={{ fontSize: "12px", color: "#666" }}>
+                    {selectedSglEmails.length} sélectionné(s)
+                  </span>
+                </div>
+                <div style={{ maxHeight: "150px", overflow: "auto" }}>
+                  {sglEmails.length > 0 ? (
+                    sglEmails.map((email, idx) => (
+                      <div
+                        key={`sgl-${idx}`}
+                        style={{
+                          padding: "12px",
+                          borderBottom: "1px solid #e2e8f0",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                          background: selectedSglEmails.includes(email) ? "#e6fffa" : "white",
+                          cursor: "pointer"
+                        }}
+                        onClick={() => toggleSglEmail(email)}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedSglEmails.includes(email)}
+                          onChange={() => toggleSglEmail(email)}
+                          style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 500, color: "#1a202c" }}>{email}</div>
+                          <div style={{ fontSize: "12px", color: "#38a169" }}>SGL</div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ padding: "20px", textAlign: "center", color: "#999" }}>
+                      Aucun SGL trouvé dans votre périmètre
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Section QM_PLANT */}
+              <div style={{ marginBottom: 20, border: "1px solid #e2e8f0", borderRadius: "8px", overflow: "hidden" }}>
+                <div style={{ 
+                  padding: "12px", 
+                  background: "#fef3c7", 
+                  borderBottom: "1px solid #e2e8f0",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px"
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={selectAllQmPlant}
+                    onChange={toggleAllQmPlant}
+                    style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                    disabled={qmPlantEmails.length === 0}
+                  />
+                  <strong style={{ flex: 1 }}>QM_PLANT ({qmPlantEmails.length})</strong>
+                  <span style={{ fontSize: "12px", color: "#666" }}>
+                    {selectedQmPlantEmails.length} sélectionné(s)
+                  </span>
+                </div>
+                <div style={{ maxHeight: "150px", overflow: "auto" }}>
+                  {qmPlantEmails.length > 0 ? (
+                    qmPlantEmails.map((email, idx) => (
+                      <div
+                        key={`qmplant-${idx}`}
+                        style={{
+                          padding: "12px",
+                          borderBottom: "1px solid #e2e8f0",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                          background: selectedQmPlantEmails.includes(email) ? "#fef3c7" : "white",
+                          cursor: "pointer"
+                        }}
+                        onClick={() => toggleQmPlantEmail(email)}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedQmPlantEmails.includes(email)}
+                          onChange={() => toggleQmPlantEmail(email)}
+                          style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 500, color: "#1a202c" }}>{email}</div>
+                          <div style={{ fontSize: "12px", color: "#d97706" }}>QM_PLANT</div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ padding: "20px", textAlign: "center", color: "#999" }}>
+                      Aucun QM_PLANT trouvé dans votre périmètre
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="leoni-modal-footer">
@@ -127,7 +314,7 @@ function EmailModal({ isOpen, onClose, onConfirm, usersList, loadingUsers }) {
             type="button" 
             className="leoni-btn leoni-btn-primary" 
             onClick={() => onConfirm(selectedEmails)}
-            disabled={selectedEmails.length === 0}
+            disabled={selectedEmails.length === 0 || loadingEmails}
           >
             Valider & Envoyer ({selectedEmails.length} destinataire(s))
           </button>
@@ -143,6 +330,7 @@ const buildDefaultForm = () => ({
   dateEntretien: new Date().toISOString().split("T")[0],
   decision: "",
   justification: "",
+  casca: "", // Champ CASCA optionnel
 });
 
 // ─── Composant principal ──────────────────────────────────────────────────────
@@ -169,12 +357,14 @@ export default function EntretienDeDecision() {
   const [search, setSearch] = useState("");
   const [filteredFautes, setFilteredFautes] = useState([]);
 
-  // Email modal
-  const [usersList, setUsersList] = useState([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
+  // Email modal - séparer HP, SGL, QM_PLANT
+  const [hpEmails, setHpEmails] = useState([]);
+  const [sglEmails, setSglEmails] = useState([]);
+  const [qmPlantEmails, setQmPlantEmails] = useState([]);
+  const [loadingEmails, setLoadingEmails] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
 
-  // Trois statuts distincts (comme entretien de mesure)
+  // Trois statuts distincts
   const [valideSL, setValideSL] = useState(false);
   const [valideHPSGL, setValideHPSGL] = useState(false);
   const [valideQMPlant, setValideQMPlant] = useState(false);
@@ -190,34 +380,53 @@ export default function EntretienDeDecision() {
     }
   }, []);
 
-  const loadUsers = async () => {
-    try {
-      setLoadingUsers(true);
-      const response = await userService.getAllEmails();
-      console.log("Emails récupérés:", response.data);
-      
-      if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-        const emailList = response.data.filter(email => email && email.includes('@')).map(email => ({
-          email: email,
-          nomUtilisateur: email.split('@')[0] || email,
-          role: "UTILISATEUR"
-        }));
-        setUsersList(emailList);
-      } else {
-        setUsersList([]);
-      }
-    } catch (err) {
-      console.error("Erreur chargement emails:", err);
-      setUsersList([]);
-    } finally {
-      setLoadingUsers(false);
+  // ── Charger les emails HP, SGL, QM_PLANT par périmètre ──
+ // Dans EntretienDeDecision.jsx - loadEmailsByPerimeter()
+const loadEmailsByPerimeter = async () => {
+  try {
+    setLoadingEmails(true);
+    const response = await userService.getHPSGLQMPlantEmailsByPerimeter();
+    
+    // 🔍 DÉBOGAGE - Afficher la structure complète
+    console.log("=== RÉPONSE COMPLÈTE ===");
+    console.log("Response:", response);
+    console.log("Response.data:", response.data);
+    console.log("Type de response.data:", typeof response.data);
+    
+    // Si response.data est un tableau, afficher son contenu
+    if (Array.isArray(response.data)) {
+      console.log("C'est un tableau de", response.data.length, "éléments");
+      console.log("Contenu:", response.data);
+    } 
+    // Si c'est un objet
+    else if (typeof response.data === 'object') {
+      console.log("Propriétés de response.data:", Object.keys(response.data));
+      console.log("response.data.hp:", response.data.hp);
+      console.log("response.data.sgl:", response.data.sgl);
+      console.log("response.data.qmPlant:", response.data.qmPlant);
     }
-  };
+    
+    setHpEmails(response.data?.hp || []);
+    setSglEmails(response.data?.sgl || []);
+    setQmPlantEmails(response.data?.qmPlant || []);
+    
+    console.log("📧 HP emails après set:", response.data?.hp);
+    console.log("📧 SGL emails après set:", response.data?.sgl);
+    console.log("📧 QM_PLANT emails après set:", response.data?.qmPlant);
+  } catch (err) {
+    console.error("Erreur chargement emails par périmètre:", err);
+    setHpEmails([]);
+    setSglEmails([]);
+    setQmPlantEmails([]);
+  } finally {
+    setLoadingEmails(false);
+  }
+};
 
   useEffect(() => {
     loadData();
     loadFautes();
-    loadUsers();
+    loadEmailsByPerimeter();
   }, [matricule]);
 
   useEffect(() => {
@@ -332,7 +541,6 @@ export default function EntretienDeDecision() {
         setValideSL(dernier.valideSL || false);
         setValideHPSGL(dernier.valideHPSGL || false);
         setValideQMPlant(dernier.valideQMPlant || false);
-        console.log("Statuts - valideSL:", dernier.valideSL, "valideHPSGL:", dernier.valideHPSGL, "valideQMPlant:", dernier.valideQMPlant);
       } else {
         resetForm();
       }
@@ -349,6 +557,7 @@ export default function EntretienDeDecision() {
       dateEntretien: entretien.dateEntretien || new Date().toISOString().split("T")[0],
       decision: entretien.decision || "",
       justification: entretien.justification || "",
+      casca: entretien.casca || "",
     });
     if (entretien.typeFaute && !typeOptions.includes(entretien.typeFaute)) {
       setTypeOptions(prev => [...prev, entretien.typeFaute]);
@@ -375,6 +584,18 @@ export default function EntretienDeDecision() {
     }
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Gestion spécifique pour le champ CASCA (numérique)
+  const handleCascaChange = (e) => {
+    if (!canModify && userRole !== "HP" && userRole !== "SGL" && userRole !== "QM_PLANT") {
+      showErrorAlert("Permission refusée", "Vous n'avez pas les droits.");
+      return;
+    }
+    const value = e.target.value;
+    if (value === "" || value === "-" || /^-?\d*\.?\d*$/.test(value)) {
+      setFormData(prev => ({ ...prev, casca: value }));
+    }
   };
 
   // ── Bouton MODIFIER (SL uniquement) ──
@@ -412,66 +633,48 @@ export default function EntretienDeDecision() {
   };
 
   // ── Validation SL : création/modification + email aux destinataires ──
-  // ── Validation SL : création/modification + email aux destinataires ──
-const handleSLValidation = async (destinatairesEmails) => {
-  console.log("=== handleSLValidation START ===");
-  console.log("Destinataires emails:", destinatairesEmails);
-  console.log("Current entretien ID:", currentEntretienId);
-  
-  setShowEmailModal(false);
-  setSaving(true);
-  try {
-    const entretienData = {
-      typeFaute: formData.typeFaute,
-      dateEntretien: formData.dateEntretien,
-      decision: formData.decision,
-      justification: formData.justification || "",
-      destinatairesEmails: destinatairesEmails,  // ✅ Inclure dans les données
-      messageOptionnel: "Convocation à l'entretien de décision"  // Optionnel
-    };
+  const handleSLValidation = async (destinatairesEmails) => {
+    setShowEmailModal(false);
+    setSaving(true);
+    try {
+      const entretienData = {
+        typeFaute: formData.typeFaute,
+        dateEntretien: formData.dateEntretien,
+        decision: formData.decision,
+        justification: formData.justification || "",
+        casca: formData.casca ? parseFloat(formData.casca) : null,
+        destinatairesEmails: destinatairesEmails,
+      };
 
-    console.log("Données à envoyer:", entretienData);
+      let entretienId = currentEntretienId;
 
-    let entretienId = currentEntretienId;
-
-    if (currentEntretienId) {
-      // ✅ Mise à jour
-      console.log("Mode UPDATE pour ID:", currentEntretienId);
-      await entretienDecisionService.update(matricule, currentEntretienId, entretienData);
-      console.log("Update effectué");
-      entretienId = currentEntretienId;
-    } else {
-      // ✅ Création
-      console.log("Mode CREATE");
-      const response = await entretienDecisionService.create(matricule, entretienData);
-      console.log("Création réponse:", response);
-      if (response?.data?.id) {
-        entretienId = response.data.id;
-        console.log("Entretien créé avec ID:", entretienId);
+      if (currentEntretienId) {
+        await entretienDecisionService.update(matricule, currentEntretienId, entretienData);
+        entretienId = currentEntretienId;
       } else {
-        throw new Error("Aucun ID retourné après création");
+        const response = await entretienDecisionService.create(matricule, entretienData);
+        if (response?.data?.id) {
+          entretienId = response.data.id;
+        } else {
+          throw new Error("Aucun ID retourné après création");
+        }
       }
+
+      await entretienDecisionService.validerParSL(matricule, entretienId, entretienData);
+
+      const nbDestinataires = destinatairesEmails.length;
+      setStatusMessage(`Entretien validé. Email envoyé à ${nbDestinataires} destinataire(s).`);
+      await showSuccessAlert("Entretien soumis", `L'email de convocation a été envoyé à ${nbDestinataires} destinataire(s).`);
+      localStorage.removeItem(`entretien-decision-draft-${matricule}`);
+      await loadAllEntretiens();
+      setTimeout(() => navigate(`/paq-dossier/${matricule}`), 1500);
+    } catch (err) {
+      console.error(err);
+      showErrorAlert("Enregistrement impossible", err.response?.data?.message || err.message);
+    } finally {
+      setSaving(false);
     }
-
-    // ✅ Appel de la validation SL avec TOUTES les données (y compris destinatairesEmails)
-    console.log("Appel validerParSL avec ID:", entretienId);
-    await entretienDecisionService.validerParSL(matricule, entretienId, entretienData);
-    console.log("Validation SL effectuée");
-
-    const nbDestinataires = destinatairesEmails.length;
-    setStatusMessage(`Entretien validé. Email envoyé à ${nbDestinataires} destinataire(s).`);
-    await showSuccessAlert("Entretien soumis", `L'email de convocation a été envoyé à ${nbDestinataires} destinataire(s).`);
-    localStorage.removeItem(`entretien-decision-draft-${matricule}`);
-    await loadAllEntretiens();
-    setTimeout(() => navigate(`/paq-dossier/${matricule}`), 1500);
-  } catch (err) {
-    console.error("❌ Erreur dans handleSLValidation:", err);
-    console.error("Détails erreur:", err.response?.data);
-    showErrorAlert("Enregistrement impossible", err.response?.data?.message || err.message);
-  } finally {
-    setSaving(false);
-  }
-};
+  };
 
   // ── Validation HP/SGL (1ère validation) ──
   const handleValidationHPSGL = async () => {
@@ -482,16 +685,14 @@ const handleSLValidation = async (destinatairesEmails) => {
         dateEntretien: formData.dateEntretien,
         decision: formData.decision,
         justification: formData.justification || "",
+        casca: formData.casca ? parseFloat(formData.casca) : null,
       };
 
       await entretienDecisionService.valider1(matricule, currentEntretienId, entretienData);
 
       setValideHPSGL(true);
       setStatusMessage("Entretien de décision validé (1ère validation HP/SGL).");
-      await showSuccessAlert(
-        "Validation enregistrée",
-        "La validation HP/SGL a été enregistrée."
-      );
+      await showSuccessAlert("Validation enregistrée", "La validation HP/SGL a été enregistrée.");
 
       localStorage.removeItem(`entretien-decision-draft-${matricule}`);
       await loadAllEntretiens();
@@ -513,16 +714,14 @@ const handleSLValidation = async (destinatairesEmails) => {
         dateEntretien: formData.dateEntretien,
         decision: formData.decision,
         justification: formData.justification || "",
+        casca: formData.casca ? parseFloat(formData.casca) : null,
       };
 
       await entretienDecisionService.valider2(matricule, currentEntretienId, entretienData);
 
       setValideQMPlant(true);
       setStatusMessage("Entretien de décision validé (2ème validation QM_PLANT).");
-      await showSuccessAlert(
-        "Validation enregistrée",
-        "La validation QM_PLANT a été enregistrée. Passage au niveau supérieur."
-      );
+      await showSuccessAlert("Validation enregistrée", "La validation QM_PLANT a été enregistrée.");
 
       localStorage.removeItem(`entretien-decision-draft-${matricule}`);
       await loadAllEntretiens();
@@ -581,19 +780,13 @@ const handleSLValidation = async (destinatairesEmails) => {
     }
   };
 
-  // ── Permissions ──────────────────────────────────────────────────────────────
+  // ── Permissions ──
   const canModify = userRole === "SL";
   const isEditable = userRole === "SL";
 
-  // SL peut valider si QM_PLANT n'a pas encore validé
   const showValiderSL = userRole === "SL" && !valideQMPlant;
-
-  // HP/SGL peut valider si SL a soumis ET que HP/SGL n'a pas encore validé
   const showValiderHPSGL = (userRole === "HP" || userRole === "SGL") && !!currentEntretienId && valideSL && !valideHPSGL && !valideQMPlant;
-
-  // QM_PLANT peut valider si SL a soumis ET HP/SGL a validé ET QM_PLANT pas encore validé
   const showValiderQMPlant = userRole === "QM_PLANT" && !!currentEntretienId && valideSL && valideHPSGL && !valideQMPlant;
-
   const showModifier = canModify && !!currentEntretienId && !valideQMPlant;
   const showBrouillon = canModify && !valideQMPlant;
   const showValider = showValiderSL || showValiderHPSGL || showValiderQMPlant;
@@ -613,7 +806,6 @@ const handleSLValidation = async (destinatairesEmails) => {
     return d.toLocaleDateString("fr-FR");
   };
 
-  // ── Rendu ─────────────────────────────────────────────────────────────────────
   if (loading)
     return (
       <div className="leoni-loading">
@@ -655,6 +847,26 @@ const handleSLValidation = async (destinatairesEmails) => {
               {collaborator.name || ""} {collaborator.prenom || ""} — {collaborator.matricule || matricule}
             </span>
           )}
+        </div>
+
+        <div className="leoni-header-actions">
+          {/* Champ CASCA dans l'en-tête */}
+          <div className="leoni-casca-field">
+            <label htmlFor="casca" className="leoni-casca-label">
+              CASCA
+            </label>
+            <input
+              type="text"
+              id="casca"
+              name="casca"
+              value={formData.casca}
+              onChange={handleCascaChange}
+              className="leoni-input leoni-input-casca"
+              placeholder="Optionnel"
+              disabled={valideQMPlant || (!isEditable && userRole !== "HP" && userRole !== "SGL" && userRole !== "QM_PLANT")}
+              style={{ width: "100px", textAlign: "center" }}
+            />
+          </div>
 
           {/* Badges de statut */}
           {userRole === "SL" && !currentEntretienId && !valideQMPlant && (
@@ -685,8 +897,6 @@ const handleSLValidation = async (destinatairesEmails) => {
             <span className="leoni-badge-success">Entretien validé</span>
           )}
         </div>
-
-        <div className="leoni-header-actions" />
       </div>
 
       {statusMessage && <div className="leoni-alert leoni-alert-success">{statusMessage}</div>}
@@ -851,7 +1061,7 @@ const handleSLValidation = async (destinatairesEmails) => {
 
                 {/* Décision */}
                 <div className="leoni-form-group">
-                  <label>Décision </label>
+                  <label>Décision *</label>
                   <select
                     name="decision"
                     value={formData.decision}
@@ -939,13 +1149,15 @@ const handleSLValidation = async (destinatairesEmails) => {
         </div>
       </div>
 
-      {/* Modal Email (SL uniquement) */}
+      {/* Modal Email (SL uniquement) avec séparation HP, SGL, QM_PLANT */}
       <EmailModal
         isOpen={showEmailModal}
         onClose={() => setShowEmailModal(false)}
         onConfirm={handleSLValidation}
-        usersList={usersList}
-        loadingUsers={loadingUsers}
+        hpEmails={hpEmails}
+        sglEmails={sglEmails}
+        qmPlantEmails={qmPlantEmails}
+        loadingEmails={loadingEmails}
       />
 
       {/* Modal Ajout faute */}

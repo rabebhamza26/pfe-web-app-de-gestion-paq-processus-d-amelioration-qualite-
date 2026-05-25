@@ -31,7 +31,7 @@ public class EntretienExplicatifController {
     }
 
     @PutMapping("/{matricule}/{id}")
-    @PreAuthorize("hasRole('SL')")
+    @PreAuthorize("hasAnyRole('SL', 'SGL')")
     public ResponseEntity<EntretienExplicatif> update(
             @PathVariable String matricule,
             @PathVariable Long id,
@@ -41,7 +41,7 @@ public class EntretienExplicatifController {
     }
 
     @PostMapping("/{id}/validate")
-    @PreAuthorize("hasRole('SL')")
+    @PreAuthorize("hasAnyRole('SL', 'SGL')")
     public ResponseEntity<Void> validate(
             @PathVariable Long id,
             Authentication authentication) {

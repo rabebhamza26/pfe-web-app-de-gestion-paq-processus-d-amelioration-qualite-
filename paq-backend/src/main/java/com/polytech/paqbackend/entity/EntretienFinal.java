@@ -21,7 +21,20 @@ public class EntretienFinal {
     @Column(columnDefinition = "TEXT")
     private String commentaireRH;
 
+    // NOUVEAU CHAMP CASCA (optionnel)
+    @Column(name = "casca", nullable = true)
+    private Double casca;
+
     // Getters & Setters
+
+    public Double getCasca() {
+        return casca;
+    }
+
+    public void setCasca(Double casca) {
+        this.casca = casca;
+    }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

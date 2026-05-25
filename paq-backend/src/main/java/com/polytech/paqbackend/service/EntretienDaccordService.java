@@ -86,6 +86,8 @@ public class EntretienDaccordService {
         e.setCauseFaute(dto.getCauseFaute());
         e.setMesuresProposees(dto.getMesuresProposees() != null ? dto.getMesuresProposees() : "");
         e.setValide(false);
+        e.setCasca(dto.getCasca()); // NOUVEAU
+
 
         EntretienDaccord saved = repo.save(e);
 
@@ -122,6 +124,8 @@ public class EntretienDaccordService {
         if (dto.getTypeFaute() != null) existing.setTypeFaute(dto.getTypeFaute());
         if (dto.getCauseFaute() != null) existing.setCauseFaute(dto.getCauseFaute());
         if (dto.getMesuresProposees() != null) existing.setMesuresProposees(dto.getMesuresProposees());
+
+        if (dto.getCasca() != null) existing.setCasca(dto.getCasca()); // NOUVEAU
 
         EntretienDaccord updated = repo.save(existing);
 
@@ -207,6 +211,7 @@ public class EntretienDaccordService {
         if (dto.getTypeFaute() != null) existing.setTypeFaute(dto.getTypeFaute());
         if (dto.getCauseFaute() != null) existing.setCauseFaute(dto.getCauseFaute());
         if (dto.getMesuresProposees() != null) existing.setMesuresProposees(dto.getMesuresProposees());
+        if (dto.getCasca() != null) existing.setCasca(dto.getCasca()); // NOUVEAU
 
         // Marquer validé par QM
         existing.setValide(true);

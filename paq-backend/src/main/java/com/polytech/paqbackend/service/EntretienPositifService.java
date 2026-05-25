@@ -209,7 +209,9 @@ public class EntretienPositifService {
     /**
      * Envoi automatique toutes les minutes pour test
      */
-   // @Scheduled(fixedDelay = 60000)
+    @Scheduled(fixedDelay = 60000)
+    //  @Scheduled(cron = "0 0 8 * * ?")  // Tous les jours à 8h00 du matin
+
     @Transactional
     public void envoyerAutomatiquementAuxSL() {
         System.out.println("=== [TEST] Envoi automatique des entretiens positifs aux SL ===");
@@ -217,17 +219,16 @@ public class EntretienPositifService {
         System.out.println("MailSender configuré: " + (mailSender != null));
 
         if (mailSender == null) {
-            System.err.println("❌ MailSender non configuré! Vérifiez votre configuration SMTP.");
+            System.err.println(" MailSender non configuré! Vérifiez votre configuration SMTP.");
             return;
         }
 
-        // ✅ CORRECTION : Utiliser "SL" (String) car la méthode attend un String
         List<User> slUsers = userRepository.findAllSL();
 
         System.out.println("Nombre de SL trouvés: " + (slUsers != null ? slUsers.size() : 0));
 
         if (slUsers == null || slUsers.isEmpty()) {
-            System.out.println("❌ Aucun utilisateur avec rôle SL trouvé");
+            System.out.println(" Aucun utilisateur avec rôle SL trouvé");
             return;
         }
 
@@ -238,7 +239,7 @@ public class EntretienPositifService {
             System.out.println("Email SL: " + sl.getEmail());
 
             if (sl.getEmail() == null || sl.getEmail().isEmpty()) {
-                System.out.println("⚠️ SL sans email: " + sl.getLogin());
+                System.out.println(" SL sans email: " + sl.getLogin());
                 continue;
             }
 
@@ -250,7 +251,7 @@ public class EntretienPositifService {
                     boolean emailEnvoye = envoyerEmailAutomatique(sl, collabPourSL);
                     if (emailEnvoye) {
                         totalEnvoyes++;
-                        System.out.println("✅ Email envoyé avec succès à " + sl.getEmail());
+                        System.out.println(" Email envoyé avec succès à " + sl.getEmail());
 
                         EntretienPositif entretien = new EntretienPositif();
                         entretien.setSlDestinataire(sl.getEmail());
@@ -292,7 +293,7 @@ public class EntretienPositifService {
 
         helper.setTo(sl.getEmail());
         helper.setFrom(fromEmail != null ? fromEmail : "paq@leoni.com");
-        helper.setSubject("✨ Entretien Positif – Collaborateurs à féliciter – " + now.format(MOIS_FORMATTER));
+        helper.setSubject(" Entretien Positif – Collaborateurs à féliciter – " + now.format(MOIS_FORMATTER));
 
         String htmlContent = buildEmailContent(sl, collaborateurs, now);
         helper.setText(htmlContent, true);
@@ -340,13 +341,13 @@ public class EntretienPositifService {
             <body>
                 <div class='email-container'>
                     <div class='email-header'>
-                        <h1>🏆 FÉLICITATIONS ! 🏆</h1>
+                        <h1>FÉLICITATIONS ! </h1>
                         <p>Entretien Positif - %s</p>
                     </div>
                     <div class='email-body'>
                         <p>Bonjour <strong>%s</strong>,</p>
                         <div class='email-message'>
-                            <p>✨ FÉLICITER SES COLLABORATEURS ! ✨</p>
+                            <p>FÉLICITER SES COLLABORATEURS ! </p>
                         </div>
                         <p>Nous avons le plaisir de vous informer que <strong>%d collaborateur(s)</strong> 
                         de %s ont accompli <strong>plus de 6 mois sans aucune faute</strong>.</p>
@@ -384,8 +385,8 @@ public class EntretienPositifService {
                             </tbody>
                         </table>
                         <div class='email-footer'>
-                            <p>ℹ️ Cet email est envoyé automatiquement par le système PAQ.</p>
-                            <p>🌿 Félicitez et valorisez vos collaborateurs pour leur excellence !</p>
+                            <p>ℹCet email est envoyé automatiquement par le système PAQ.</p>
+                            <p> Félicitez et valorisez vos collaborateurs pour leur excellence !</p>
                             <p>&copy; 2026 PAQ System - LEONI</p>
                         </div>
                     </div>

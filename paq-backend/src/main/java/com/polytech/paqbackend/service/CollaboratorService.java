@@ -21,6 +21,8 @@ public class CollaboratorService {
     @Autowired
     private PaqRepository paqRepository;
 
+    // QualificationService complètement supprimé
+
     @Transactional
     public Collaborator create(Collaborator collaborator) {
         // Initialisation des valeurs par défaut
@@ -29,12 +31,10 @@ public class CollaboratorService {
         collaborator.setActif(true);
         collaborator.setArchived(false);
         collaborator.setDepart(false);
+        collaborator.setDepartDate(null); // Initialiser à null
 
         // Sauvegarde du collaborateur
         Collaborator saved = collaboratorRepository.save(collaborator);
-
-        // Note: Le PAQ ne sera créé qu'après 6 mois, pas immédiatement
-        // Un scheduler s'occupe de la création automatique
 
         return saved;
     }
@@ -61,7 +61,9 @@ public class CollaboratorService {
             existing.setHireDate(collaborator.getHireDate());
         }
 
-        return collaboratorRepository.save(existing);
+        Collaborator updated = collaboratorRepository.save(existing);
+
+        return updated;
     }
 
     @Transactional
@@ -81,5 +83,15 @@ public class CollaboratorService {
         }
 
         collaboratorRepository.deleteById(matricule);
+    }
+
+    // Méthode utilitaire pour vérifier l'existence d'un collaborateur
+    public boolean existsByMatricule(String matricule) {
+        return collaboratorRepository.existsById(matricule);
+    }
+
+    // Méthode pour trouver un collaborateur par matricule
+    public Optional<Collaborator> findByMatricule(String matricule) {
+        return collaboratorRepository.findById(matricule);
     }
 }

@@ -18,6 +18,7 @@ const buildDefaultForm = () => ({
   dateEntretien: new Date().toISOString().split("T")[0],
   decision: "",
   commentaireRH: "",
+  casca: "", // Champ CASCA optionnel
 });
 
 export default function EntretienFinal({ niveau = 5 }) {
@@ -109,13 +110,14 @@ export default function EntretienFinal({ niveau = 5 }) {
       dateEntretien: entretien.dateEntretien || new Date().toISOString().split("T")[0],
       decision: entretien.decision || "",
       commentaireRH: entretien.commentaireRH || "",
+      casca: entretien.casca || "", // Charger CASCA
     });
     
     if (entretien.typeFaute && !typeOptions.includes(entretien.typeFaute)) {
       setTypeOptions(prev => [...prev, entretien.typeFaute]);
     }
     
-    setStatusMessage("Entretien chargÃ© avec succÃ¨s.");
+    setStatusMessage("Entretien chargé avec succès.");
     setTimeout(() => setStatusMessage(""), 3000);
   };
 
@@ -131,6 +133,14 @@ export default function EntretienFinal({ niveau = 5 }) {
 
   const handleChange = e => setFormData({ ...formData, [e.target.name]: e.target.value });
 
+  // Gestion spécifique pour le champ CASCA (numérique)
+  const handleCascaChange = (e) => {
+    const value = e.target.value;
+    if (value === "" || value === "-" || /^-?\d*\.?\d*$/.test(value)) {
+      setFormData({ ...formData, casca: value });
+    }
+  };
+
   const addTypeOption = async () => {
     const value = defautTypeInput.trim();
     if (!value) return;
@@ -141,7 +151,7 @@ export default function EntretienFinal({ niveau = 5 }) {
       setFormData(prev => ({ ...prev, typeFaute: nom }));
       setDefautTypeInput("");
       setShowDefautModal(false);
-      setStatusMessage("Type de faute ajoutÃ© avec succÃ¨s.");
+      setStatusMessage("Type de faute ajouté avec succès.");
       showSuccessToast("Faute ajoutée");
     } catch {
       setError("Erreur ajout faute");
@@ -154,7 +164,7 @@ export default function EntretienFinal({ niveau = 5 }) {
     try {
       const payload = { ...formData, id: currentId };
       localStorage.setItem(`entretien-final-draft-${matricule}`, JSON.stringify(payload));
-      setStatusMessage("Brouillon enregistrÃ©.");
+      setStatusMessage("Brouillon enregistré.");
       showSuccessToast("Brouillon enregistré");
       setTimeout(() => setStatusMessage(""), 3000);
     } catch {
@@ -166,14 +176,14 @@ export default function EntretienFinal({ niveau = 5 }) {
 
   const handleAjouter = () => {
     resetForm();
-    setStatusMessage("Formulaire rÃ©initialisÃ©.");
+    setStatusMessage("Formulaire réinitialisé.");
     showInfoToast("Formulaire réinitialisé");
     setTimeout(() => setStatusMessage(""), 2000);
   };
 
   const handleModifier = async () => {
     if (entretiensList.length === 0) {
-      setError("Aucun entretien final existant Ã  modifier.");
+      setError("Aucun entretien final existant à modifier.");
       return;
     }
     const dernier = entretiensList.sort((a, b) => new Date(b.dateEntretien) - new Date(a.dateEntretien))[0];
@@ -183,7 +193,7 @@ export default function EntretienFinal({ niveau = 5 }) {
 
   const handleSupprimer = async () => {
     if (!currentId) {
-      setError("Aucun entretien chargÃ© pour suppression.");
+      setError("Aucun entretien chargé pour suppression.");
       return;
     }
     
@@ -199,7 +209,7 @@ export default function EntretienFinal({ niveau = 5 }) {
       await entretienFinalService.delete(currentId);
       resetForm();
       await loadAllEntretiens();
-      setStatusMessage("Entretien final supprimÃ© avec succÃ¨s.");
+      setStatusMessage("Entretien final supprimé avec succès.");
       await showSuccessAlert("Entretien supprimé", "L'entretien final a bien été supprimé.");
       setTimeout(() => navigate(`/paq-dossier/${matricule}`), 1500);
     } catch (err) {
@@ -222,7 +232,7 @@ export default function EntretienFinal({ niveau = 5 }) {
       return;
     }
     if (!formData.decision) {
-      setError("La dÃ©cision RH est obligatoire !");
+      setError("La décision RH est obligatoire !");
       setSaving(false);
       return;
     }
@@ -233,15 +243,16 @@ export default function EntretienFinal({ niveau = 5 }) {
         dateEntretien: formData.dateEntretien,
         decision: formData.decision,
         commentaireRH: formData.commentaireRH,
+        casca: formData.casca ? parseFloat(formData.casca) : null, // Envoyer CASCA
       };
 
       if (currentId) {
         await entretienFinalService.update(matricule, currentId, payload);
-        setStatusMessage("Entretien final modifiÃ© avec succÃ¨s.");
+        setStatusMessage("Entretien final modifié avec succès.");
         await showSuccessAlert("Entretien modifié", "La modification a été enregistrée avec succès.");
       } else {
         await entretienFinalService.create(matricule, payload);
-        setStatusMessage("Entretien final crÃ©Ã© avec succÃ¨s, dossier clÃ´turÃ© âœ“");
+        setStatusMessage("Entretien final créé avec succès, dossier clôturé ✓");
         await showSuccessAlert("Entretien final créé", "Le dossier a été clôturé avec succès.");
       }
 
@@ -257,7 +268,7 @@ export default function EntretienFinal({ niveau = 5 }) {
     }
   };
 
-  const fmt = d => { if (!d) return "â€”"; try { return new Date(d).toLocaleDateString("fr-FR"); } catch { return d; } };
+  const fmt = d => { if (!d) return "—"; try { return new Date(d).toLocaleDateString("fr-FR"); } catch { return d; } };
 
   if (loading) return <div className="ef-loading">Chargement...</div>;
 
@@ -274,7 +285,7 @@ export default function EntretienFinal({ niveau = 5 }) {
           <div className="leoni-header-title">
             <div className="leoni-logo-bar">
               <div className="leoni-logo-accent" />
-              <h1>Etape5: Entretien Final</h1>
+              <h1>Etape 5: Entretien Final</h1>
             </div>
             {collaborator && (
               <span className="leoni-header-sub">
@@ -282,7 +293,24 @@ export default function EntretienFinal({ niveau = 5 }) {
               </span>
             )}
           </div>
-          <div className="leoni-header-actions" />
+          <div className="leoni-header-actions">
+            {/* Champ CASCA dans l'en-tête */}
+            <div className="leoni-casca-field">
+              <label htmlFor="casca" className="leoni-casca-label">
+                CASCA
+              </label>
+              <input
+                type="text"
+                id="casca"
+                name="casca"
+                value={formData.casca}
+                onChange={handleCascaChange}
+                className="leoni-input leoni-input-casca"
+                placeholder="Optionnel"
+                style={{ width: "100px", textAlign: "center" }}
+              />
+            </div>
+          </div>
         </div>
 
         <div className="ef-page">
@@ -302,8 +330,8 @@ export default function EntretienFinal({ niveau = 5 }) {
                 </div>
                 <div className="ef-cname">{collaborator?.name} {collaborator?.prenom}</div>
                 <div className="ef-igrid">
-                  <div className="ef-icell"><span className="ef-ilbl">Matricule</span><span className="ef-ival">{collaborator?.matricule||"â€“"}</span></div>
-                  <div className="ef-icell"><span className="ef-ilbl">Segment</span><span className="ef-ival">{collaborator?.segment||"â€“"}</span></div>
+                  <div className="ef-icell"><span className="ef-ilbl">Matricule</span><span className="ef-ival">{collaborator?.matricule||"—"}</span></div>
+                  <div className="ef-icell"><span className="ef-ilbl">Segment</span><span className="ef-ival">{collaborator?.segment||"—"}</span></div>
                   <div className="ef-icell"><span className="ef-ilbl">Embauche</span><span className="ef-ival">{fmt(collaborator?.hireDate)}</span></div>
                   <div className="ef-icell"><span className="ef-ilbl">Statut</span><span className="ef-ival green">{collaborator?.status||"ACTIF"}</span></div>
                 </div>
@@ -315,20 +343,20 @@ export default function EntretienFinal({ niveau = 5 }) {
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
                   <path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2"/>
                 </svg>
-                Resume de  Entretien de Decision (N4)
+                Résumé de l'Entretien de Décision (N4)
               </div>
               <div className="ef-card-bd">
                 {resumeN4 ? (
                   <div className="ef-rrow">
-                    <div className="ef-rline"><span className="ef-rlbl">Type faute</span><span className="ef-rval">{resumeN4.typeFaute||"â€“"}</span></div>
+                    <div className="ef-rline"><span className="ef-rlbl">Type faute</span><span className="ef-rval">{resumeN4.typeFaute||"—"}</span></div>
                     <div className="ef-rline"><span className="ef-rlbl">Date</span><span className="ef-rval">{fmt(resumeN4.dateEntretien||resumeN4.date)}</span></div>
-                    <div className="ef-rline"><span className="ef-rlbl">DÃ©cision</span><span className="ef-rval">{resumeN4.decision||"â€“"}</span></div>
+                    <div className="ef-rline"><span className="ef-rlbl">Décision</span><span className="ef-rval">{resumeN4.decision||"—"}</span></div>
                     {resumeN4.justification && (
                       <div className="ef-rline"><span className="ef-rlbl">Justif.</span><span className="ef-rval" style={{fontSize:11}}>{resumeN4.justification}</span></div>
                     )}
                   </div>
                 ) : (
-                  <div className="ef-rempty">Aucun entretien de dÃ©cision trouvÃ©</div>
+                  <div className="ef-rempty">Aucun entretien de décision trouvé</div>
                 )}
               </div>
             </div>
@@ -366,11 +394,11 @@ export default function EntretienFinal({ niveau = 5 }) {
                 <form onSubmit={handleSubmit}>
 
                   <div className="ef-fg">
-                    <label className="ef-lbl">Type de faute <span className="req"></span></label>
+                    <label className="ef-lbl">Type de faute <span className="req">*</span></label>
                     <div className="ef-faute-row">
                       <div className="ef-dw">
                         <input type="text" className="ef-inp"
-                          placeholder="Rechercher ou sÃ©lectionner une faute..."
+                          placeholder="Rechercher ou sélectionner une faute..."
                           value={formData.typeFaute}
                           onChange={e => { setFormData(p=>({...p,typeFaute:e.target.value})); setShowDropdown(true); }}
                           onFocus={() => setShowDropdown(true)}
@@ -396,15 +424,15 @@ export default function EntretienFinal({ niveau = 5 }) {
 
                   <div className="ef-row2">
                     <div className="ef-fg">
-                      <label className="ef-lbl">Date entretien</label>
+                      <label className="ef-lbl">Date entretien *</label>
                       <input type="date" name="dateEntretien" className="ef-inp"
                         value={formData.dateEntretien} onChange={handleChange}/>
                     </div>
                     <div className="ef-fg">
-                      <label className="ef-lbl">Decision RH <span className="req"></span></label>
+                      <label className="ef-lbl">Décision RH <span className="req">*</span></label>
                       <select name="decision" className="ef-sel"
                         value={formData.decision} onChange={handleChange}>
-                        <option value="">â€” Choisir â€”</option>
+                        <option value="">— Choisir —</option>
                         {DECISIONS.map(d => <option key={d} value={d}>{d}</option>)}
                       </select>
                     </div>
@@ -414,7 +442,7 @@ export default function EntretienFinal({ niveau = 5 }) {
                     <label className="ef-lbl">Commentaire RH</label>
                     <textarea name="commentaireRH" className="ef-ta" rows={3}
                       value={formData.commentaireRH} onChange={handleChange}
-                      placeholder="Motivez la dÃ©cision finale prise par les RH..."/>
+                      placeholder="Motivez la décision finale prise par les RH..."/>
                   </div>
 
                   <div className="ef-actions">

@@ -12,6 +12,15 @@ public class EntretienDecisionRequestDTO {
     private String destinataireEmail; // Gardé pour compatibilité
     private List<String> destinatairesEmails; // Liste d'emails pour SL
     private String messageOptionnel; // Message optionnel
+    private Double casca; // NOUVEAU
+
+    public Double getCasca() {
+        return casca;
+    }
+
+    public void setCasca(Double casca) {
+        this.casca = casca;
+    }
 
     // GETTERS & SETTERS
     public String getTypeFaute() { return typeFaute; }

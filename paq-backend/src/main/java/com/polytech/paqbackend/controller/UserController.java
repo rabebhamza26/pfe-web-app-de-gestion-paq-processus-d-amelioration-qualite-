@@ -17,6 +17,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -42,7 +43,6 @@ public class UserController {
         this.emailService = emailService;
         this.tokenRepository = tokenRepository;
     }
-
 
 
     @GetMapping("/sl/emails")
@@ -325,5 +325,125 @@ public class UserController {
         List<Long> siteIds = request.get("siteIds");
         List<Long> plantIds = request.get("plantIds");
         return ResponseEntity.ok(userService.getEmailsBySitesAndPlants(siteIds, plantIds));
+    }
+
+    // Dans UserController.java - Ajoutez cet endpoint
+
+    @GetMapping("/qm-emails/by-perimeter")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<String>> getQMEmailsByPerimeter(Authentication authentication) {
+        try {
+            // Récupérer l'utilisateur connecté
+            String email = authentication.getName();
+            User currentUser = userRepository.findByEmailOrLoginWithPerimeter(email);
+
+            if (currentUser == null) {
+                return ResponseEntity.ok(new ArrayList<>());
+            }
+
+            List<String> qmEmails = userService.getQMEmailsByPerimeter(currentUser);
+            return ResponseEntity.ok(qmEmails);
+        } catch (Exception e) {
+            return ResponseEntity.ok(new ArrayList<>());
+        }
+    }
+
+    // Endpoint existant (garder pour compatibilité)
+    @GetMapping("/qm-emails")
+    public ResponseEntity<List<String>> getQMEmails() {
+        return ResponseEntity.ok(userService.getQMEmails());
+    }
+
+    @GetMapping("/sgl-emails/by-perimeter")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<String>> getSGLEmailsByPerimeter(Authentication authentication) {
+        try {
+            String email = authentication.getName();
+            User currentUser = userRepository.findByEmailOrLoginWithPerimeter(email);
+
+            if (currentUser == null) {
+                return ResponseEntity.ok(new ArrayList<>());
+            }
+
+            List<String> sglEmails = userService.getSGLEmailsByPerimeter(currentUser);
+            return ResponseEntity.ok(sglEmails);
+        } catch (Exception e) {
+            return ResponseEntity.ok(new ArrayList<>());
+        }
+    }
+
+    // Dans UserController.java - Ajoutez ces endpoints
+
+    @GetMapping("/hp-emails/by-perimeter")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<String>> getHPEmailsByPerimeter(Authentication authentication) {
+        try {
+            String email = authentication.getName();
+            User currentUser = userRepository.findByEmailOrLoginWithPerimeter(email);
+
+            if (currentUser == null) {
+                return ResponseEntity.ok(new ArrayList<>());
+            }
+
+            List<String> hpEmails = userService.getHPEmailsByPerimeter(currentUser);
+            return ResponseEntity.ok(hpEmails);
+        } catch (Exception e) {
+            return ResponseEntity.ok(new ArrayList<>());
+        }
+    }
+
+    @GetMapping("/qmplant-emails/by-perimeter")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<String>> getQMPlantEmailsByPerimeter(Authentication authentication) {
+        try {
+            String email = authentication.getName();
+            User currentUser = userRepository.findByEmailOrLoginWithPerimeter(email);
+
+            if (currentUser == null) {
+                return ResponseEntity.ok(new ArrayList<>());
+            }
+
+            List<String> qmPlantEmails = userService.getQMPlantEmailsByPerimeter(currentUser);
+            return ResponseEntity.ok(qmPlantEmails);
+        } catch (Exception e) {
+            return ResponseEntity.ok(new ArrayList<>());
+        }
+    }
+
+    @GetMapping("/hp-sgl-qmplant-emails/by-perimeter")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, List<String>>> getHPSGLQMPlantEmailsByPerimeter(Authentication authentication) {
+        try {
+            String email = authentication.getName();
+            User currentUser = userRepository.findByEmailOrLoginWithPerimeter(email);
+
+            if (currentUser == null) {
+                Map<String, List<String>> emptyMap = Map.of(
+                        "hp", new ArrayList<>(),
+                        "sgl", new ArrayList<>(),
+                        "qmPlant", new ArrayList<>()
+                );
+                return ResponseEntity.ok(emptyMap);
+            }
+
+            List<String> hpEmails = userService.getHPEmailsByPerimeter(currentUser);
+            List<String> sglEmails = userService.getSGLEmailsByPerimeter(currentUser);
+            List<String> qmPlantEmails = userService.getQMPlantEmailsByPerimeter(currentUser);
+
+            Map<String, List<String>> result = Map.of(
+                    "hp", hpEmails,
+                    "sgl", sglEmails,
+                    "qmPlant", qmPlantEmails
+            );
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            Map<String, List<String>> emptyMap = Map.of(
+                    "hp", new ArrayList<>(),
+                    "sgl", new ArrayList<>(),
+                    "qmPlant", new ArrayList<>()
+            );
+            return ResponseEntity.ok(emptyMap);
+        }
     }
 }

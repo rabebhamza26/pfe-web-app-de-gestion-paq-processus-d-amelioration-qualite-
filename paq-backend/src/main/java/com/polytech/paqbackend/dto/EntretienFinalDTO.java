@@ -11,6 +11,12 @@ public class EntretienFinalDTO {
     private String commentaireRH;
     private String destinataireEmail;
 
+    // Dans EntretienFinalRequestDTO.java (si vous en avez un)
+    private Double casca;
+
+    public Double getCasca() { return casca; }
+    public void setCasca(Double casca) { this.casca = casca; }
+
     public String getDecision() { return decision; }
     public void setDecision(String decision) { this.decision = decision; }
 

@@ -23,9 +23,13 @@ public class EntretienDecision {
 
     private LocalDate dateCreation;
 
+    // NOUVEAU CHAMP CASCA (optionnel)
+    @Column(name = "casca", nullable = true)
+    private Double casca;
+
     // ⭐ Trois statuts distincts (comme entretien de mesure)
     @Column(name = "valide_sl")
-    private boolean valideSL = false;      // SL a soumis
+    private boolean  valideSL = false;      // SL a soumis
 
     @Column(name = "valide_hp_sgl")
     private boolean valideHPSGL = false;   // HP/SGL a validé (1ère)
@@ -34,6 +38,15 @@ public class EntretienDecision {
     private boolean valideQMPlant = false; // QM_PLANT a validé (2ème)
 
     // Getters et Setters
+
+    public Double getCasca() {
+        return casca;
+    }
+
+    public void setCasca(Double casca) {
+        this.casca = casca;
+    }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 

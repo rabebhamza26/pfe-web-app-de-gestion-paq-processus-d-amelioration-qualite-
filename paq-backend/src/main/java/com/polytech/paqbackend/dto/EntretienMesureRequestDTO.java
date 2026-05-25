@@ -10,9 +10,9 @@ public class EntretienMesureRequestDTO {
     private String planAction;
     private LocalDate dateEntretien;
     private String destinataireEmail;
-    private LocalDate dateRequalification;
     private String message;
     private List<String> destinatairesEmails;
+    private Double casca; // NOUVEAU
 
     // Getters et Setters existants...
 
@@ -34,12 +34,18 @@ public class EntretienMesureRequestDTO {
     public LocalDate getDateEntretien() { return dateEntretien; }
     public void setDateEntretien(LocalDate dateEntretien) { this.dateEntretien = dateEntretien; }
 
-    public LocalDate getDateRequalification() { return dateRequalification; }
-    public void setDateRequalification(LocalDate dateRequalification) { this.dateRequalification = dateRequalification; }
 
     public String getMessage() { return message; }
     public void setMessage(String message) { this.message = message; }
 
     public List<String> getDestinatairesEmails() { return destinatairesEmails; }
     public void setDestinatairesEmails(List<String> destinatairesEmails) { this.destinatairesEmails = destinatairesEmails; }
+
+    public Double getCasca() {
+        return casca;
+    }
+
+    public void setCasca(Double casca) {
+        this.casca = casca;
+    }
 }

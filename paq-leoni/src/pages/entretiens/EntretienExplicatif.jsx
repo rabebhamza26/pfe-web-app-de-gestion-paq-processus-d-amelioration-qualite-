@@ -16,6 +16,7 @@ const buildDefaultForm = () => ({
   mesuresCorrectives: "",
   commentaire: "",
   defautGrave: false,
+  casca: "", // NOUVEAU - CASCA optionnel
 });
 
 export default function EntretienExplicatif({ niveau = 1 }) {
@@ -44,7 +45,7 @@ export default function EntretienExplicatif({ niveau = 1 }) {
   const [filteredFautes, setFilteredFautes] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
 
-  // Vérifier les permissions : SL peut tout faire, SGL peut modifier et valider
+  // Vérifier les permissions
   const canModify = isSL || isSGL;
   const canValidate = isSL || isSGL;
 
@@ -103,7 +104,6 @@ export default function EntretienExplicatif({ niveau = 1 }) {
       if (list.length > 0) {
         const dernier = list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
         chargerEntretienDansFormulaire(dernier);
-        // Vérifier si l'entretien est déjà validé
         setIsValidated(dernier.valide || false);
       }
     } catch (err) {
@@ -122,6 +122,7 @@ export default function EntretienExplicatif({ niveau = 1 }) {
       mesuresCorrectives: entretien.mesuresCorrectives || "",
       commentaire: entretien.commentaire || "",
       defautGrave: entretien.defautGrave || false,
+      casca: entretien.casca || "", // NOUVEAU - Récupérer la valeur CASCA
     });
     
     if (entretien.typeFaute && !typeOptions.includes(entretien.typeFaute)) {
@@ -138,6 +139,19 @@ export default function EntretienExplicatif({ niveau = 1 }) {
     }
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
+  };
+
+  // Gestion spécifique pour le champ CASCA (numérique)
+  const handleCascaChange = (e) => {
+    if (!canModify) {
+      showErrorAlert("Permission refusée", "Seuls les SL et SGL peuvent modifier un entretien.");
+      return;
+    }
+    const value = e.target.value;
+    // Permettre les nombres positifs, négatifs, décimaux, ou vide
+    if (value === "" || value === "-" || /^-?\d*\.?\d*$/.test(value)) {
+      setFormData({ ...formData, casca: value });
+    }
   };
 
   const addTypeOption = async () => {
@@ -196,7 +210,6 @@ export default function EntretienExplicatif({ niveau = 1 }) {
     }
   };
 
-  // Création et validation en une seule action
   const handleCreateAndValidate = async () => {
     setSaving(true);
     setError("");
@@ -210,11 +223,11 @@ export default function EntretienExplicatif({ niveau = 1 }) {
         description: formData.description,
         mesuresCorrectives: formData.mesuresCorrectives,
         defautGrave: formData.defautGrave,
+        casca: formData.casca ? parseFloat(formData.casca) : null, // NOUVEAU
       };
 
       const response = await entretienService.create(matricule, entretienData);
       
-      // Validation UNIQUEMENT pour la création
       if (response && response.data && response.data.id) {
         await entretienService.validate(response.data.id);
         setStatusMessage("Entretien créé et validé avec succès.");
@@ -236,7 +249,6 @@ export default function EntretienExplicatif({ niveau = 1 }) {
     }
   };
 
-  // Modification SANS validation supplémentaire
   const handleUpdateOnly = async () => {
     if (!currentEntretienId) {
       setError("Aucun entretien à modifier.");
@@ -255,6 +267,7 @@ export default function EntretienExplicatif({ niveau = 1 }) {
         description: formData.description,
         mesuresCorrectives: formData.mesuresCorrectives,
         defautGrave: formData.defautGrave,
+        casca: formData.casca ? parseFloat(formData.casca) : null, // NOUVEAU
       };
 
       await entretienService.update(matricule, currentEntretienId, entretienData);
@@ -273,7 +286,6 @@ export default function EntretienExplicatif({ niveau = 1 }) {
     }
   };
 
-  // Validation seule (pour SGL)
   const handleValidateOnly = async () => {
     if (!currentEntretienId) {
       setError("Aucun entretien à valider.");
@@ -364,11 +376,29 @@ export default function EntretienExplicatif({ niveau = 1 }) {
         </div>
 
         <div className="leoni-header-actions">
+          {/* NOUVEAU : Champ CASCA dans l'en-tête */}
+          <div className="leoni-casca-field">
+            <label htmlFor="casca" className="leoni-casca-label">
+              CASCA
+            </label>
+            <input
+              type="text"
+              id="casca"
+              name="casca"
+              value={formData.casca}
+              onChange={handleCascaChange}
+              className="leoni-input leoni-input-casca"
+              placeholder="Optionnel"
+              disabled={!canModify || isValidated}
+              style={{ width: "100px", textAlign: "center" }}
+            />
+          </div>
+
           {isSGL && !isSL && (
             <span className="leoni-badge leoni-badge-warning">Mode SGL - Validation requise</span>
           )}
           {isSL && (
-            <span className="leoni-badge leoni-badge-success">Mode SL - Modification complète</span>
+            <span className="leoni-badge leoni-badge-success"></span>
           )}
           {!canModify && (
             <span className="leoni-badge leoni-badge-gray">Mode lecture seule</span>
@@ -383,6 +413,7 @@ export default function EntretienExplicatif({ niveau = 1 }) {
       {error && <div className="leoni-alert leoni-alert-error">{error}</div>}
 
       <div className="leoni-grid-main">
+        {/* Reste du formulaire inchangé... */}
         <div className="leoni-col-left">
           {collaborator && (
             <div className="leoni-card">
@@ -426,6 +457,7 @@ export default function EntretienExplicatif({ niveau = 1 }) {
             </div>
             <div className="leoni-card-body">
               <form id="entretien-explicatif-form" onSubmit={handleSubmit} className="leoni-form-stack">
+                {/* Le reste du formulaire reste identique */}
                 <div className="leoni-form-group">
                   <label>Type de faute </label>
                   <div className="leoni-inline">
@@ -470,6 +502,7 @@ export default function EntretienExplicatif({ niveau = 1 }) {
                   </div>
                 </div>
 
+                {/* Autres champs... */}
                 <div className="leoni-form-group">
                   <label>Date de l'entretien </label>
                   <input 
@@ -551,7 +584,6 @@ export default function EntretienExplicatif({ niveau = 1 }) {
                         style={{ width: "16px", height: "16px", accentColor: "#ff4444" }}
                       />
                       ⚠️ Défaut grave – Activation immédiate SGL obligatoire
-                      (contourne la progression normale)
                     </label>
 
                     {formData.defautGrave && (
@@ -566,8 +598,7 @@ export default function EntretienExplicatif({ niveau = 1 }) {
                           fontSize: "13px",
                         }}
                       >
-                        ⚠ Si coché, le SGL sera automatiquement notifié et devra
-                        participer dès ce niveau 1.
+                        ⚠ Si coché, le SGL sera automatiquement notifié et devra participer dès ce niveau 1.
                       </div>
                     )}
                   </div>
@@ -594,7 +625,6 @@ export default function EntretienExplicatif({ niveau = 1 }) {
                     </>
                   )}
                   
-                  {/* Bouton de validation séparé pour SGL */}
                   {isSGL && currentEntretienId && !isValidated && (
                     <button
                       type="button"

@@ -169,7 +169,7 @@ public class EmailService {
             <body style="font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px;">
               <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px; padding: 30px;">
                 <div style="background: #C8102E; padding: 20px; border-radius: 8px 8px 0 0; margin: -30px -30px 0 -30px;">
-                  <h2 style="color: white; margin: 0;">🏭 PAQ - Validation d'entretien</h2>
+                  <h2 style="color: white; margin: 0;"> PAQ - Validation d'entretien</h2>
                 </div>
                 <div style="padding: 20px 0;">
                   <p>Bonjour,</p>
@@ -206,4 +206,37 @@ public class EmailService {
     public void envoyerEmailSimple(String destinataireEmail, String sujet, String contenuHtml) {
         sendEmail("system@paq.com", destinataireEmail, sujet, contenuHtml);
     }
+
+    public void sendDefautGraveNotificationToSGL(
+            String sglEmail,
+            String matricule,
+            String collaborateurNom,
+            String typeFaute,
+            String expediteurEmail
+    ) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(sglEmail);
+            message.setFrom(expediteurEmail);
+            message.setSubject("[PAQ] Défaut grave détecté — Participation SGL requise");
+            message.setText(
+                    "Bonjour,\n\n" +
+                            "Un défaut grave a été enregistré pour le collaborateur suivant :\n\n" +
+                            "  Matricule     : " + matricule + "\n" +
+                            "  Collaborateur : " + collaborateurNom + "\n" +
+                            "  Type de faute : " + typeFaute + "\n\n" +
+                            "En tant que SGL (Chef de segment), votre participation à l'entretien " +
+                            "explicatif est obligatoire conformément au processus PAQ.\n\n" +
+                            "Merci de vous connecter à la plateforme PAQ pour consulter et valider cet entretien.\n\n" +
+                            "Cordialement,\n" +
+                            "Système PAQ — Notification automatique"
+            );
+            mailSender.send(message);
+            log.info("Notification défaut grave envoyée au SGL {} pour le matricule {}", sglEmail, matricule);
+        } catch (Exception e) {
+            log.error("Erreur envoi mail défaut grave au SGL {}: {}", sglEmail, e.getMessage());
+        }
+    }
+
+
 }

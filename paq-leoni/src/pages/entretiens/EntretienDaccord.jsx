@@ -25,12 +25,10 @@ import {
 // ─── Modal Email pour sélection multiple (SL uniquement) ─────────────────────────────
 function EmailModal({ isOpen, onClose, onConfirm, emailsList, loadingEmails }) {
   const [selectedEmails, setSelectedEmails] = useState([]);
-  const [emailFilter, setEmailFilter] = useState("all");
 
   useEffect(() => {
     if (isOpen) {
       setSelectedEmails([]);
-      setEmailFilter("all");
     }
   }, [isOpen]);
 
@@ -87,7 +85,11 @@ function EmailModal({ isOpen, onClose, onConfirm, emailsList, loadingEmails }) {
               </span>
             </div>
             <div style={{ maxHeight: "300px", overflow: "auto" }}>
-              {emailsList.length > 0 ? (
+              {loadingEmails ? (
+                <div style={{ padding: "40px", textAlign: "center", color: "#999" }}>
+                  Chargement des emails...
+                </div>
+              ) : emailsList.length > 0 ? (
                 emailsList.map((email, idx) => (
                   <div
                     key={idx}
@@ -115,7 +117,7 @@ function EmailModal({ isOpen, onClose, onConfirm, emailsList, loadingEmails }) {
                 ))
               ) : (
                 <div style={{ padding: "40px", textAlign: "center", color: "#999" }}>
-                  Aucun email trouvé dans la base de données
+                  Aucun QM-Segment trouvé dans la base de données
                 </div>
               )}
             </div>
@@ -130,7 +132,7 @@ function EmailModal({ isOpen, onClose, onConfirm, emailsList, loadingEmails }) {
             type="button"
             className="leoni-btn leoni-btn-primary"
             onClick={() => onConfirm(selectedEmails)}
-            disabled={selectedEmails.length === 0}
+            disabled={selectedEmails.length === 0 || loadingEmails}
           >
             Valider & Envoyer ({selectedEmails.length} destinataire(s))
           </button>
@@ -146,6 +148,7 @@ const buildDefaultForm = () => ({
   dateEntretien: new Date().toISOString().split("T")[0],
   causeFaute: "",
   mesuresProposees: "",
+  casca: "", // Champ CASCA optionnel
 });
 
 // ─── Composant principal ──────────────────────────────────────────────────────
@@ -153,31 +156,31 @@ export default function EntretienDaccord({ niveau = 2 }) {
   const { matricule } = useParams();
   const navigate = useNavigate();
 
-  const [userRole, setUserRole]           = useState(null);
-  const [collaborator, setCollaborator]   = useState(null);
-  const [loading, setLoading]             = useState(true);
-  const [saving, setSaving]               = useState(false);
-  const [savingDraft, setSavingDraft]     = useState(false);
-  const [error, setError]                 = useState("");
+  const [userRole, setUserRole] = useState(null);
+  const [collaborator, setCollaborator] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [error, setError] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
-  const [resumeN1, setResumeN1]           = useState(null);
+  const [resumeN1, setResumeN1] = useState(null);
   const [currentEntretienId, setCurrentEntretienId] = useState(null);
-  const [entretiensList, setEntretiensList]         = useState([]);
-  const [showDropdown, setShowDropdown]   = useState(false);
-  const [typeOptions, setTypeOptions]     = useState([]);
+  const [entretiensList, setEntretiensList] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [typeOptions, setTypeOptions] = useState([]);
   const [showDefautModal, setShowDefautModal] = useState(false);
   const [defautTypeInput, setDefautTypeInput] = useState("");
-  const [search, setSearch]               = useState("");
+  const [search, setSearch] = useState("");
   const [filteredFautes, setFilteredFautes] = useState([]);
 
-  // Email modal
-  const [emailsList, setEmailsList]       = useState([]);
+  // Email modal - utilise l'endpoint spécifique QM_SEGMENT
+  const [emailsList, setEmailsList] = useState([]);
   const [loadingEmails, setLoadingEmails] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
 
   // Deux statuts distincts
-  const [valideSL, setValideSL]   = useState(false); // SL a soumis
-  const [valideQM, setValideQM]   = useState(false); // QM a validé
+  const [valideSL, setValideSL] = useState(false);
+  const [valideQM, setValideQM] = useState(false);
 
   const [formData, setFormData] = useState(buildDefaultForm());
 
@@ -190,19 +193,31 @@ export default function EntretienDaccord({ niveau = 2 }) {
     }
   }, []);
 
-  // ── Emails QM ──
+  // ── Emails QM_SEGMENT uniquement ──
+ // Dans EntretienDaccord.jsx - Remplacer la fonction loadQMEmails
+
+// ── Emails QM_SEGMENT par périmètre (site/plant du user connecté) ──
 const loadQMEmails = async () => {
   try {
     setLoadingEmails(true);
-    const response = await userService.getAllEmails();
-    // Filtrer pour ne garder que les emails valides (contenant @)
+    // Utiliser l'endpoint qui filtre par périmètre
+    const response = await userService.getQMEmailsByPerimeter();
     const validEmails = Array.isArray(response?.data) 
       ? response.data.filter(email => email && email.includes('@'))
       : [];
     setEmailsList(validEmails);
+    console.log("📧 Emails QM_SEGMENT par périmètre chargés:", validEmails);
   } catch (err) {
-    console.error("Erreur chargement emails:", err);
-    setEmailsList([]);
+    console.error("Erreur chargement emails QM_SEGMENT par périmètre:", err);
+    // Fallback: utiliser l'ancien endpoint
+    try {
+      const fallbackResponse = await userService.getQMEmails();
+      const allEmails = Array.isArray(fallbackResponse?.data) ? fallbackResponse.data : [];
+      setEmailsList(allEmails);
+    } catch (fallbackErr) {
+      console.error("Erreur fallback chargement emails:", fallbackErr);
+      setEmailsList([]);
+    }
   } finally {
     setLoadingEmails(false);
   }
@@ -287,7 +302,6 @@ const loadQMEmails = async () => {
       if (list.length > 0) {
         const dernier = list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
         chargerEntretienDansFormulaire(dernier);
-        // Lire les deux statuts depuis le back
         setValideSL(dernier.valide || false);
         setValideQM(dernier.valideQM || false);
       } else {
@@ -302,10 +316,11 @@ const loadQMEmails = async () => {
     if (!entretien) return;
     setCurrentEntretienId(entretien.id);
     setFormData({
-      typeFaute:        entretien.typeFaute || "",
-      dateEntretien:    entretien.date || new Date().toISOString().split("T")[0],
-      causeFaute:       entretien.causeFaute || "",
+      typeFaute: entretien.typeFaute || "",
+      dateEntretien: entretien.date || new Date().toISOString().split("T")[0],
+      causeFaute: entretien.causeFaute || "",
       mesuresProposees: entretien.mesuresProposees || "",
+      casca: entretien.casca || "", // Charger CASCA
     });
     if (entretien.typeFaute && !typeOptions.includes(entretien.typeFaute)) {
       setTypeOptions(prev => [...prev, entretien.typeFaute]);
@@ -332,6 +347,18 @@ const loadQMEmails = async () => {
     }
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Gestion spécifique pour le champ CASCA (numérique)
+  const handleCascaChange = (e) => {
+    if (!canModify && userRole !== "QM_SEGMENT") {
+      showErrorAlert("Permission refusée", "Vous n'avez pas les droits.");
+      return;
+    }
+    const value = e.target.value;
+    if (value === "" || value === "-" || /^-?\d*\.?\d*$/.test(value)) {
+      setFormData(prev => ({ ...prev, casca: value }));
+    }
   };
 
   // ── Bouton MODIFIER ──
@@ -369,80 +396,77 @@ const loadQMEmails = async () => {
   };
 
   // ── Validation SL : création/modification + email QM ──
-const handleSLValidation = async (destinatairesEmails) => {
-  setShowEmailModal(false);
-  setSaving(true);
-  try {
-    // ✅ Convertir le tableau d'emails en une chaîne séparée par des virgules
-    const destinataireEmailString = Array.isArray(destinatairesEmails) 
-      ? destinatairesEmails.join(",") 
-      : destinatairesEmails;
+  const handleSLValidation = async (destinatairesEmails) => {
+    setShowEmailModal(false);
+    setSaving(true);
+    try {
+      const destinataireEmailString = Array.isArray(destinatairesEmails) 
+        ? destinatairesEmails.join(",") 
+        : destinatairesEmails;
 
-    const entretienData = {
-      typeFaute:        formData.typeFaute,
-      date:             formData.dateEntretien,
-      causeFaute:       formData.causeFaute,
-      mesuresProposees: formData.mesuresProposees || "",
-      destinataireEmail: destinataireEmailString,  // ← Envoyer une string, pas un tableau
-    };
+      const entretienData = {
+        typeFaute: formData.typeFaute,
+        date: formData.dateEntretien,
+        causeFaute: formData.causeFaute,
+        mesuresProposees: formData.mesuresProposees || "",
+        destinataireEmail: destinataireEmailString,
+        casca: formData.casca ? parseFloat(formData.casca) : null, // Envoyer CASCA
+      };
 
-    if (currentEntretienId) {
-      await entretienDaccordService.update(matricule, currentEntretienId, entretienData);
-      await entretienDaccordService.validerPremiere(matricule, currentEntretienId, entretienData);
-    } else {
-      const response = await entretienDaccordService.create(matricule, entretienData);
-      if (response?.data?.id) {
-        await entretienDaccordService.validerPremiere(matricule, response.data.id, entretienData);
+      if (currentEntretienId) {
+        await entretienDaccordService.update(matricule, currentEntretienId, entretienData);
+        await entretienDaccordService.validerPremiere(matricule, currentEntretienId, entretienData);
+      } else {
+        const response = await entretienDaccordService.create(matricule, entretienData);
+        if (response?.data?.id) {
+          await entretienDaccordService.validerPremiere(matricule, response.data.id, entretienData);
+        }
       }
+
+      const nbDestinataires = Array.isArray(destinatairesEmails) ? destinatairesEmails.length : 1;
+      setStatusMessage(`Entretien validé. Email de convocation envoyé à ${nbDestinataires} destinataire(s).`);
+      await showSuccessAlert("Entretien soumis", `L'email de convocation a été envoyé à ${nbDestinataires} destinataire(s).`);
+      localStorage.removeItem(`entretien-daccord-draft-${matricule}`);
+      await loadAllEntretiens();
+      setTimeout(() => navigate(`/paq-dossier/${matricule}`), 1500);
+    } catch (err) {
+      console.error(err);
+      showErrorAlert("Enregistrement impossible", err.response?.data?.message || err.message);
+    } finally {
+      setSaving(false);
     }
+  };
 
-    const nbDestinataires = Array.isArray(destinatairesEmails) ? destinatairesEmails.length : 1;
-    setStatusMessage(`Entretien validé. Email de convocation envoyé à ${nbDestinataires} destinataire(s).`);
-    await showSuccessAlert("Entretien soumis", `L'email de convocation a été envoyé à ${nbDestinataires} destinataire(s).`);
-    localStorage.removeItem(`entretien-daccord-draft-${matricule}`);
-    await loadAllEntretiens();
-    setTimeout(() => navigate(`/paq-dossier/${matricule}`), 1500);
-  } catch (err) {
-    console.error(err);
-    showErrorAlert("Enregistrement impossible", err.response?.data?.message || err.message);
-  } finally {
-    setSaving(false);
-  }
-};
+  // ── Validation QM_SEGMENT : sans email, enregistrement PAQ ──
+  const handleValidationQM = async () => {
+    setSaving(true);
+    try {
+      const entretienData = {
+        typeFaute: formData.typeFaute,
+        date: formData.dateEntretien,
+        causeFaute: formData.causeFaute,
+        mesuresProposees: formData.mesuresProposees || "",
+        casca: formData.casca ? parseFloat(formData.casca) : null, // Envoyer CASCA
+      };
 
-  
-// ── Validation QM_SEGMENT : sans email, enregistrement PAQ ──
-const handleValidationQM = async () => {
-  setSaving(true);
-  try {
-    const entretienData = {
-      typeFaute:        formData.typeFaute,
-      date:             formData.dateEntretien,
-      causeFaute:       formData.causeFaute,
-      mesuresProposees: formData.mesuresProposees || "",
-    };
+      await entretienDaccordService.validerFinale(matricule, currentEntretienId, entretienData);
 
-    await entretienDaccordService.validerFinale(matricule, currentEntretienId, entretienData);
+      setValideQM(true);
+      setStatusMessage("Entretien d'accord validé par QM-Segment.");
+      await showSuccessAlert(
+        "Entretien validé",
+        "La validation QM-Segment a été enregistrée. Redirection vers le dossier PAQ..."
+      );
 
-    setValideQM(true);
-    setStatusMessage("Entretien d'accord validé par QM-Segment.");
-    await showSuccessAlert(
-      "Entretien validé",
-      "La validation QM-Segment a été enregistrée. Redirection vers le dossier PAQ..."
-    );
-
-    localStorage.removeItem(`entretien-daccord-draft-${matricule}`);
-    
-    // ✅ Redirection vers PaqDossier — qui va recharger les données avec niveau=3
-    // et afficher automatiquement le bouton "Etape 3: Entretien de Mesure"
-    navigate(`/paq-dossier/${matricule}`);
-  } catch (err) {
-    console.error(err);
-    showErrorAlert("Validation impossible", err.response?.data?.message || err.message);
-  } finally {
-    setSaving(false);
-  }
-};
+      localStorage.removeItem(`entretien-daccord-draft-${matricule}`);
+      navigate(`/paq-dossier/${matricule}`);
+    } catch (err) {
+      console.error(err);
+      showErrorAlert("Validation impossible", err.response?.data?.message || err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // ── Bouton VALIDER (dispatch selon rôle) ──
   const handleValider = () => {
@@ -484,19 +508,14 @@ const handleValidationQM = async () => {
     }
   };
 
-  // ── Permissions ──────────────────────────────────────────────────────────────
+  // ── Permissions ──
   const canModify = userRole === "SL";
   const isEditable = userRole === "SL";
 
-  // SL peut valider si QM n'a pas encore validé
   const showValiderSL = userRole === "SL" && !valideQM;
-
-  // QM peut valider si SL a soumis ET que QM n'a pas encore validé
   const showValiderQM = userRole === "QM_SEGMENT" && !!currentEntretienId && valideSL && !valideQM;
-
-  const showModifier  = canModify && !!currentEntretienId && !valideQM;
   const showBrouillon = canModify && !valideQM;
-  const showValider   = showValiderSL || showValiderQM;
+  const showValider = showValiderSL || showValiderQM;
 
   const getValiderLabel = () => {
     if (saving) return userRole === "QM_SEGMENT" ? "Validation..." : "Envoi...";
@@ -512,7 +531,7 @@ const handleValidationQM = async () => {
     return d.toLocaleDateString("fr-FR");
   };
 
-  // ── Rendu ─────────────────────────────────────────────────────────────────────
+  // ── Rendu ──
   if (loading)
     return (
       <div className="leoni-loading">
@@ -554,6 +573,26 @@ const handleValidationQM = async () => {
               {collaborator.name || ""} {collaborator.prenom || ""} — {collaborator.matricule || matricule}
             </span>
           )}
+        </div>
+
+        <div className="leoni-header-actions">
+          {/* Champ CASCA dans l'en-tête */}
+          <div className="leoni-casca-field">
+            <label htmlFor="casca" className="leoni-casca-label">
+              CASCA
+            </label>
+            <input
+              type="text"
+              id="casca"
+              name="casca"
+              value={formData.casca}
+              onChange={handleCascaChange}
+              className="leoni-input leoni-input-casca"
+              placeholder="Optionnel"
+              disabled={valideQM || (!isEditable && userRole !== "QM_SEGMENT")}
+              style={{ width: "100px", textAlign: "center" }}
+            />
+          </div>
 
           {/* Badges de statut */}
           {userRole === "SL" && !currentEntretienId && !valideQM && (
@@ -578,12 +617,10 @@ const handleValidationQM = async () => {
             <span className="leoni-badge-success">Entretien validé par QM-Segment</span>
           )}
         </div>
-
-        <div className="leoni-header-actions" />
       </div>
 
       {statusMessage && <div className="leoni-alert leoni-alert-success">{statusMessage}</div>}
-      {error        && <div className="leoni-alert leoni-alert-error">{error}</div>}
+      {error && <div className="leoni-alert leoni-alert-error">{error}</div>}
 
       <div className="leoni-grid-main">
 
@@ -711,7 +748,7 @@ const handleValidationQM = async () => {
 
                 {/* Date */}
                 <div className="leoni-form-group">
-                  <label>Date entretien </label>
+                  <label>Date entretien *</label>
                   <input
                     type="date"
                     name="dateEntretien"
@@ -751,7 +788,6 @@ const handleValidationQM = async () => {
 
                 {/* Barre d'actions */}
                 <div className="leoni-form-actions">
-                 
                   {showBrouillon && (
                     <button
                       type="button"

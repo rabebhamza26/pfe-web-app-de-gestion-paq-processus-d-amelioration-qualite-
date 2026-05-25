@@ -79,68 +79,104 @@ public class EntretienDecisionService {
     // ✅ Envoi d'emails aux destinataires
     private void envoyerEmailsSL(List<String> destinataires, String messageOptionnel, String matricule, String typeAction) {
         if (destinataires == null || destinataires.isEmpty()) {
-            log.warn("Aucun destinataire spécifié");
+            log.warn("Aucun destinataire spécifié pour l'envoi d'email");
             return;
         }
 
         String nomCollab = getCollaborateurNom(matricule);
-        String expediteur = "noreply@leoni.com";
+        String expediteur = "noreply@leoni.com"; // Ou utilisez une config
+
+        log.info("=== ENVOI EMAILS ===");
+        log.info("Destinataires: {}", destinataires);
+        log.info("Type action: {}", typeAction);
+        log.info("Message optionnel: {}", messageOptionnel);
 
         for (String destinataire : destinataires) {
-            if (destinataire != null && !destinataire.isEmpty()) {
+            if (destinataire != null && !destinataire.trim().isEmpty()) {
                 try {
-                    String sujet = String.format("[PAQ] Entretien de décision - %s - %s", nomCollab);
+                    String sujet = String.format("[PAQ] Entretien de décision - %s - %s", nomCollab, typeAction);
                     String htmlContent = buildEmailContent(nomCollab, matricule, typeAction, messageOptionnel);
-                    emailService.sendEmail(expediteur, destinataire, sujet, htmlContent);
-                    log.info("Email envoyé à: {}", destinataire);
+                    emailService.sendEmail(expediteur, destinataire.trim(), sujet, htmlContent);
+                    log.info("✅ Email envoyé avec succès à: {}", destinataire);
                 } catch (Exception e) {
-                    log.error("Erreur envoi email à {}: {}", destinataire, e.getMessage());
+                    log.error("❌ Erreur envoi email à {}: {}", destinataire, e.getMessage(), e);
                 }
             }
         }
     }
-
     private String buildEmailContent(String nomCollab, String matricule, String typeAction, String messageOptionnel) {
+        String actionTexte = "";
+        switch (typeAction) {
+            case "CRÉATION": actionTexte = "créé"; break;
+            case "MODIFICATION": actionTexte = "modifié"; break;
+            case "VALIDATION SL": actionTexte = "soumis pour validation"; break;
+            default: actionTexte = typeAction;
+        }
+
+        String messageHtml = "";
+        if (messageOptionnel != null && !messageOptionnel.isEmpty()) {
+            messageHtml = String.format("""
+            <tr>
+              <td style="padding:8px;border:1px solid #ddd;"><strong>Message</strong></td>
+              <td style="padding:8px;border:1px solid #ddd;">%s</td>
+            </tr>
+            """, messageOptionnel);
+        }
+
         return String.format("""
         <!DOCTYPE html>
         <html>
         <head><meta charset="UTF-8"></head>
         <body style="font-family: Arial, sans-serif;">
-          <div style="max-width:600px;margin:auto;background:white;border-radius:8px;padding:20px;">
+          <div style="max-width:600px;margin:auto;background:white;border-radius:8px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.1);">
             <div style="background:#C8102E;padding:15px;border-radius:8px 8px 0 0;margin:-20px -20px 0 -20px;">
-              <h2 style="color:white;margin:0;">PAQ - Entretien de décision</h2>
+              <h2 style="color:white;margin:0;">📋 PAQ - Entretien de Décision</h2>
             </div>
             <div style="padding:20px 0;">
               <p>Bonjour,</p>
               <p><strong>Merci d'assister à l'entretien de décision</strong></p>
               <p>Un entretien de décision a été <strong>%s</strong> pour le collaborateur :</p>
               <table style="width:100%%;border-collapse:collapse;margin:20px 0;">
-                <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Collaborateur</strong></td>
-                    <td style="padding:8px;border:1px solid #ddd;">%s</td>
+                <tr style="background:#f8f9fa;">
+                  <td style="padding:10px;border:1px solid #ddd;font-weight:600;width:40%%">Collaborateur</td>
+                  <td style="padding:10px;border:1px solid #ddd;"><strong>%s</strong></td>
                 </tr>
-                <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Matricule</strong></td>
-                    <td style="padding:8px;border:1px solid #ddd;">%s</td>
+                <tr>
+                  <td style="padding:10px;border:1px solid #ddd;font-weight:600;">Matricule</td>
+                  <td style="padding:10px;border:1px solid #ddd;"><code>%s</code></td>
                 </tr>
-                <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Action</strong></td>
-                    <td style="padding:8px;border:1px solid #ddd;">%s</td>
+                <tr style="background:#f8f9fa;">
+                  <td style="padding:10px;border:1px solid #ddd;font-weight:600;">Action</td>
+                  <td style="padding:10px;border:1px solid #ddd;">%s</td>
                 </tr>
-                <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Date</strong></td>
-                    <td style="padding:8px;border:1px solid #ddd;">%s</td>
+                <tr>
+                  <td style="padding:10px;border:1px solid #ddd;font-weight:600;">Date</td>
+                  <td style="padding:10px;border:1px solid #ddd;">%s</td>
                 </tr>
                 %s
               </table>
-              <p>Veuillez vous connecter au système PAQ pour valider cet entretien.</p>
+              <div style="background:#e3f2fd;padding:15px;border-radius:8px;margin:15px 0;">
+                <p style="margin:0;color:#1565c0;">
+                  <strong>🔔 Action requise :</strong><br>
+                  Connectez-vous à la plateforme PAQ pour consulter et valider cet entretien.
+                </p>
+              </div>
+            </div>
+            <div style="background:#f8f9fa;padding:10px;text-align:center;font-size:11px;color:#888;border-radius:0 0 8px 8px;margin:0 -20px -20px -20px;">
+              Email automatique - Système PAQ LEONI
             </div>
           </div>
         </body>
         </html>
         """,
-                typeAction.equals("CRÉATION") ? "créé" : typeAction.equals("MODIFICATION") ? "modifié" : "soumis pour validation",
-                nomCollab, matricule, typeAction, LocalDate.now(),
-                (messageOptionnel != null && !messageOptionnel.isEmpty()) ?
-                        String.format("<tr><td style=\"padding:8px;border:1px solid #ddd;\"><strong>Message</strong></td><td style=\"padding:8px;border:1px solid #ddd;\">%s</td></tr>", messageOptionnel) : "");
+                actionTexte,        // %s 1
+                nomCollab,          // %s 2
+                matricule,          // %s 3
+                typeAction,         // %s 4
+                LocalDate.now(),    // %s 5
+                messageHtml         // %s 6
+        );
     }
-
     // ─── CRÉATION (SL) ─────────────────────────────────────────────────────────
     public EntretienDecision create(String matricule, EntretienDecisionRequestDTO dto, String expediteurEmail) {
         Optional<PaqDossier> paqOpt = paqRepository.findFirstByCollaboratorMatriculeAndActifTrueAndArchivedFalse(matricule);
@@ -164,6 +200,8 @@ public class EntretienDecisionService {
         entretien.setValideSL(false);
         entretien.setValideHPSGL(false);
         entretien.setValideQMPlant(false);
+        entretien.setCasca(dto.getCasca());
+
 
         EntretienDecision saved = repo.save(entretien);
         log.info("Entretien décision créé avec ID: {}", saved.getId());
@@ -228,8 +266,13 @@ public class EntretienDecisionService {
     }
 
     // ✅ VALIDATION SL (avec envoi d'emails)
+// ✅ VALIDATION SL (avec envoi d'emails)
     public EntretienDecision validerParSL(Long id, String matricule, EntretienDecisionRequestDTO dto, String expediteurEmail) {
         log.info("=== validerParSL START ===");
+        log.info("ID reçu: {}", id);
+        log.info("DTO reçu - TypeFaute: {}, Decision: {}", dto.getTypeFaute(), dto.getDecision());
+        log.info("DestinatairesEmails dans DTO: {}", dto.getDestinatairesEmails());
+        log.info("Size destinataires: {}", dto.getDestinatairesEmails() != null ? dto.getDestinatairesEmails().size() : 0);
 
         EntretienDecision existing = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Entretien introuvable: " + id));
@@ -240,7 +283,6 @@ public class EntretienDecisionService {
         if (dto.getDecision() != null) existing.setDecision(dto.getDecision());
         if (dto.getJustification() != null) existing.setJustification(dto.getJustification());
 
-        // ✅ Marquer comme validé par SL
         existing.setValideSL(true);
         EntretienDecision updated = repo.save(existing);
         log.info("Entretien mis à jour - valideSL = {}", updated.isValideSL());
@@ -260,13 +302,17 @@ public class EntretienDecisionService {
 
         // ✅ Envoi des emails aux destinataires sélectionnés
         List<String> destinatairesSelectionnes = dto.getDestinatairesEmails();
+        log.info("Destinataires à envoyer: {}", destinatairesSelectionnes);
+
         if (destinatairesSelectionnes != null && !destinatairesSelectionnes.isEmpty()) {
+            log.info("Envoi des emails à {} destinataires", destinatairesSelectionnes.size());
             envoyerEmailsSL(destinatairesSelectionnes, dto.getMessageOptionnel(), matricule, "VALIDATION SL");
+        } else {
+            log.warn("⚠️ Aucun destinataire trouvé dans le DTO - Email non envoyé !");
         }
 
         return updated;
     }
-
     // ✅ VALIDATION HP/SGL (1ère validation) - sans email
     public EntretienDecision validerParHPSGL(Long id, String matricule, EntretienDecisionRequestDTO dto, String expediteurEmail) {
         log.info("=== validerParHPSGL START ===");

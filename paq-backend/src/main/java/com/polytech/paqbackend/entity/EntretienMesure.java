@@ -24,9 +24,12 @@ public class EntretienMesure {
     private String planAction;
 
     private LocalDate dateEntretien;
-    private LocalDate dateRequalification;
     private LocalDate dateCreation;
     private boolean alerteEnvoyee = false;
+
+    // NOUVEAU CHAMP CASCA (optionnel)
+    @Column(name = "casca", nullable = true)
+    private Double casca;
 
     // ⭐ Avec @Column pour correspondre aux noms des colonnes dans la base
     @Column(name = "valide_sl")
@@ -60,8 +63,6 @@ public class EntretienMesure {
     public LocalDate getDateEntretien() { return dateEntretien; }
     public void setDateEntretien(LocalDate dateEntretien) { this.dateEntretien = dateEntretien; }
 
-    public LocalDate getDateRequalification() { return dateRequalification; }
-    public void setDateRequalification(LocalDate dateRequalification) { this.dateRequalification = dateRequalification; }
 
     public LocalDate getDateCreation() { return dateCreation; }
     public void setDateCreation(LocalDate dateCreation) { this.dateCreation = dateCreation; }
@@ -77,4 +78,12 @@ public class EntretienMesure {
 
     public boolean isValideSGL() { return valideSGL; }
     public void setValideSGL(boolean valideSGL) { this.valideSGL = valideSGL; }
+
+    public Double getCasca() {
+        return casca;
+    }
+
+    public void setCasca(Double casca) {
+        this.casca = casca;
+    }
 }

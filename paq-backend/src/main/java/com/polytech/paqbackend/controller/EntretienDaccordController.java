@@ -3,6 +3,7 @@ package com.polytech.paqbackend.controller;
 import com.polytech.paqbackend.dto.EntretienDaccordRequestDTO;
 import com.polytech.paqbackend.entity.EntretienDaccord;
 import com.polytech.paqbackend.service.EntretienDaccordService;
+import com.polytech.paqbackend.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -17,8 +18,13 @@ public class EntretienDaccordController {
 
     private final EntretienDaccordService service;
 
-    public EntretienDaccordController(EntretienDaccordService service) {
+    private final UserService userService;
+
+
+    public EntretienDaccordController(EntretienDaccordService service , UserService userService) {
         this.service = service;
+        this.userService = userService;
+
     }
 
     @PostMapping("/{matricule}")
@@ -54,4 +60,12 @@ public class EntretienDaccordController {
     public ResponseEntity<List<EntretienDaccord>> getByMatricule(@PathVariable String matricule) {
         return ResponseEntity.ok(service.findByMatricule(matricule));
     }
+
+    @GetMapping("/qm-emails")
+    public ResponseEntity<List<String>> getQMEmails() {
+        List<String> emails = userService.getQMEmails();
+        return ResponseEntity.ok(emails);
+    }
+
+
 }

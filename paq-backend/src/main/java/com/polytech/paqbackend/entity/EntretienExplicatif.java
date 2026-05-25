@@ -26,12 +26,25 @@ public class EntretienExplicatif {
         @Column(columnDefinition="TEXT")
         private String commentaire;
 
+    @Column(nullable = false)
+    private boolean defautGrave = false;
 
 
+    // NOUVEAU CHAMP CASCA (optionnel)
+    @Column(name = "casca", nullable = true)
+    private Double casca;
 
-        private LocalDateTime createdAt = LocalDateTime.now();
+
+    // Getter et Setter pour CASCA
+    public Double getCasca() { return casca; }
+    public void setCasca(Double casca) { this.casca = casca; }
+
+    private LocalDateTime createdAt = LocalDateTime.now();
 
         // getters/setters...
+
+    public boolean isDefautGrave() { return defautGrave; }
+    public void setDefautGrave(boolean defautGrave) { this.defautGrave = defautGrave; }
 
 
     public Long getId() {

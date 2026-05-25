@@ -4,6 +4,8 @@ import com.polytech.paqbackend.dto.*;
 import com.polytech.paqbackend.entity.*;
 import com.polytech.paqbackend.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,6 +24,8 @@ public class UserService {
     private final PlantRepository plantRepository;
     private final SegmentRepository segmentRepository;
     private final PasswordEncoder passwordEncoder;
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
+
 
     public List<UserResponseDto> getAllUsers() {
         return userRepository.findAllWithAllRelations()
@@ -221,6 +225,290 @@ public class UserService {
         }
 
         return new ArrayList<>(allEmails);
+    }
+
+    public List<String> getQMEmails() {
+        try {
+            // Méthode 1: Utiliser la requête JPQL directe
+            List<String> qmEmails = userRepository.findQMEmails();
+
+            if (qmEmails == null || qmEmails.isEmpty()) {
+                log.warn("Aucun email QM_SEGMENT trouvé dans la base de données");
+                return new ArrayList<>();
+            }
+
+            log.info("{} emails QM_SEGMENT trouvés", qmEmails.size());
+            return qmEmails;
+
+        } catch (Exception e) {
+            log.error("Erreur lors de la récupération des emails QM_SEGMENT", e);
+            return new ArrayList<>();
+        }
+    }
+
+    public List<String> getQMEmailsByPerimeter(User currentUser) {
+        try {
+            boolean isAdmin = currentUser.getRole() == Role.ADMIN;
+
+            if (isAdmin) {
+                // ADMIN voit tous les QM_SEGMENT
+                return userRepository.findQMEmails();
+            }
+
+            // Récupérer les sites et plants accessibles par l'utilisateur
+            Set<Long> accessibleSiteIds = new HashSet<>();
+            Set<Long> accessiblePlantIds = new HashSet<>();
+
+            // Sites directement assignés
+            if (currentUser.getSites() != null) {
+                for (Site site : currentUser.getSites()) {
+                    if (site != null && site.getId() != null) {
+                        accessibleSiteIds.add(site.getId());
+                    }
+                }
+            }
+
+            // Plants directement assignés
+            if (currentUser.getPlants() != null) {
+                for (Plant plant : currentUser.getPlants()) {
+                    if (plant != null && plant.getId() != null) {
+                        accessiblePlantIds.add(plant.getId());
+                    }
+                }
+            }
+
+            // Plants via sites
+            if (currentUser.getSites() != null) {
+                for (Site site : currentUser.getSites()) {
+                    if (site != null && site.getPlants() != null) {
+                        for (Plant plant : site.getPlants()) {
+                            if (plant != null && plant.getId() != null) {
+                                accessiblePlantIds.add(plant.getId());
+                            }
+                        }
+                    }
+                }
+            }
+
+            Set<String> allEmails = new HashSet<>();
+
+            // Chercher les QM_SEGMENT par sites accessibles
+            if (!accessibleSiteIds.isEmpty()) {
+                for (Long siteId : accessibleSiteIds) {
+                    List<String> siteEmails = userRepository.findQMEmailsBySite(siteId);
+                    allEmails.addAll(siteEmails);
+                }
+            }
+
+            // Chercher les QM_SEGMENT par plants accessibles
+            if (!accessiblePlantIds.isEmpty()) {
+                for (Long plantId : accessiblePlantIds) {
+                    List<String> plantEmails = userRepository.findQMEmailsByPlant(plantId);
+                    allEmails.addAll(plantEmails);
+                }
+            }
+
+            log.info("{} emails QM_SEGMENT trouvés dans le périmètre de {}", allEmails.size(), currentUser.getEmail());
+            return new ArrayList<>(allEmails);
+
+        } catch (Exception e) {
+            log.error("Erreur lors de la récupération des emails QM_SEGMENT par périmètre", e);
+            return new ArrayList<>();
+        }
+    }
+
+    public List<String> getSGLEmailsByPerimeter(User currentUser) {
+        try {
+            boolean isAdmin = currentUser.getRole() == Role.ADMIN;
+
+            if (isAdmin) {
+                return userRepository.findSGLEmails();
+            }
+
+            Set<Long> accessibleSiteIds = new HashSet<>();
+            Set<Long> accessiblePlantIds = new HashSet<>();
+
+            if (currentUser.getSites() != null) {
+                for (Site site : currentUser.getSites()) {
+                    if (site != null && site.getId() != null) {
+                        accessibleSiteIds.add(site.getId());
+                    }
+                }
+            }
+
+            if (currentUser.getPlants() != null) {
+                for (Plant plant : currentUser.getPlants()) {
+                    if (plant != null && plant.getId() != null) {
+                        accessiblePlantIds.add(plant.getId());
+                    }
+                }
+            }
+
+            if (currentUser.getSites() != null) {
+                for (Site site : currentUser.getSites()) {
+                    if (site != null && site.getPlants() != null) {
+                        for (Plant plant : site.getPlants()) {
+                            if (plant != null && plant.getId() != null) {
+                                accessiblePlantIds.add(plant.getId());
+                            }
+                        }
+                    }
+                }
+            }
+
+            Set<String> allEmails = new HashSet<>();
+
+            if (!accessibleSiteIds.isEmpty()) {
+                for (Long siteId : accessibleSiteIds) {
+                    List<String> siteEmails = userRepository.findSGLEmailsBySite(siteId);
+                    allEmails.addAll(siteEmails);
+                }
+            }
+
+            if (!accessiblePlantIds.isEmpty()) {
+                for (Long plantId : accessiblePlantIds) {
+                    List<String> plantEmails = userRepository.findSGLEmailsByPlant(plantId);
+                    allEmails.addAll(plantEmails);
+                }
+            }
+
+            log.info("{} emails SGL trouvés dans le périmètre de {}", allEmails.size(), currentUser.getEmail());
+            return new ArrayList<>(allEmails);
+
+        } catch (Exception e) {
+            log.error("Erreur lors de la récupération des emails SGL par périmètre", e);
+            return new ArrayList<>();
+        }
+    }
+
+// Dans UserService.java - Ajoutez ces méthodes
+
+    public List<String> getHPEmailsByPerimeter(User currentUser) {
+        try {
+            boolean isAdmin = currentUser.getRole() == Role.ADMIN;
+
+            if (isAdmin) {
+                return userRepository.findHPEmails();
+            }
+
+            Set<Long> accessibleSiteIds = new HashSet<>();
+            Set<Long> accessiblePlantIds = new HashSet<>();
+
+            if (currentUser.getSites() != null) {
+                for (Site site : currentUser.getSites()) {
+                    if (site != null && site.getId() != null) {
+                        accessibleSiteIds.add(site.getId());
+                    }
+                }
+            }
+
+            if (currentUser.getPlants() != null) {
+                for (Plant plant : currentUser.getPlants()) {
+                    if (plant != null && plant.getId() != null) {
+                        accessiblePlantIds.add(plant.getId());
+                    }
+                }
+            }
+
+            if (currentUser.getSites() != null) {
+                for (Site site : currentUser.getSites()) {
+                    if (site != null && site.getPlants() != null) {
+                        for (Plant plant : site.getPlants()) {
+                            if (plant != null && plant.getId() != null) {
+                                accessiblePlantIds.add(plant.getId());
+                            }
+                        }
+                    }
+                }
+            }
+
+            Set<String> allEmails = new HashSet<>();
+
+            if (!accessibleSiteIds.isEmpty()) {
+                for (Long siteId : accessibleSiteIds) {
+                    List<String> siteEmails = userRepository.findHPEmailsBySite(siteId);
+                    allEmails.addAll(siteEmails);
+                }
+            }
+
+            if (!accessiblePlantIds.isEmpty()) {
+                for (Long plantId : accessiblePlantIds) {
+                    List<String> plantEmails = userRepository.findHPEmailsByPlant(plantId);
+                    allEmails.addAll(plantEmails);
+                }
+            }
+
+            log.info("{} emails HP trouvés dans le périmètre de {}", allEmails.size(), currentUser.getEmail());
+            return new ArrayList<>(allEmails);
+
+        } catch (Exception e) {
+            log.error("Erreur lors de la récupération des emails HP par périmètre", e);
+            return new ArrayList<>();
+        }
+    }
+
+    public List<String> getQMPlantEmailsByPerimeter(User currentUser) {
+        try {
+            boolean isAdmin = currentUser.getRole() == Role.ADMIN;
+
+            if (isAdmin) {
+                return userRepository.findQMPlantEmails();
+            }
+
+            Set<Long> accessibleSiteIds = new HashSet<>();
+            Set<Long> accessiblePlantIds = new HashSet<>();
+
+            if (currentUser.getSites() != null) {
+                for (Site site : currentUser.getSites()) {
+                    if (site != null && site.getId() != null) {
+                        accessibleSiteIds.add(site.getId());
+                    }
+                }
+            }
+
+            if (currentUser.getPlants() != null) {
+                for (Plant plant : currentUser.getPlants()) {
+                    if (plant != null && plant.getId() != null) {
+                        accessiblePlantIds.add(plant.getId());
+                    }
+                }
+            }
+
+            if (currentUser.getSites() != null) {
+                for (Site site : currentUser.getSites()) {
+                    if (site != null && site.getPlants() != null) {
+                        for (Plant plant : site.getPlants()) {
+                            if (plant != null && plant.getId() != null) {
+                                accessiblePlantIds.add(plant.getId());
+                            }
+                        }
+                    }
+                }
+            }
+
+            Set<String> allEmails = new HashSet<>();
+
+            if (!accessibleSiteIds.isEmpty()) {
+                for (Long siteId : accessibleSiteIds) {
+                    List<String> siteEmails = userRepository.findQMPlantEmailsBySite(siteId);
+                    allEmails.addAll(siteEmails);
+                }
+            }
+
+            if (!accessiblePlantIds.isEmpty()) {
+                for (Long plantId : accessiblePlantIds) {
+                    List<String> plantEmails = userRepository.findQMPlantEmailsByPlant(plantId);
+                    allEmails.addAll(plantEmails);
+                }
+            }
+
+            log.info("{} emails QM_PLANT trouvés dans le périmètre de {}", allEmails.size(), currentUser.getEmail());
+            return new ArrayList<>(allEmails);
+
+        } catch (Exception e) {
+            log.error("Erreur lors de la récupération des emails QM_PLANT par périmètre", e);
+            return new ArrayList<>();
+        }
     }
 
 

@@ -38,93 +38,132 @@ export default function Dashboard() {
     loadDashboard();
   }, [selectedSite, selectedPlant]);
 
-  const loadDashboard = async () => {
-    try {
-      setLoading(true);
-      const params = {};
-      if (selectedSite?.id) params.siteId = selectedSite.id;
-      if (selectedPlant?.id) params.plantId = selectedPlant.id;
+ const loadDashboard = async () => {
+  try {
+    setLoading(true);
+    const params = {};
+    if (selectedSite?.id) params.siteId = selectedSite.id;
+    if (selectedPlant?.id) params.plantId = selectedPlant.id;
 
-      console.log("Chargement dashboard avec filtres:", params);
+    console.log("Chargement dashboard avec filtres:", params);
 
-      const [
-        statsRes,
-        paqRes,
-        entretienTotalsRes,
-        entretienEvolutionRes
-      ] = await Promise.all([
-        dashboardService.getStats(params),
-        paqService.getAll(params),
-        dashboardService.getEntretiensTotals(params),
-        dashboardService.getEntretiensEvolution(params).catch(err => {
-          console.warn("Erreur chargement évolution des entretiens:", err);
-        }),
-      ]);
+    const [
+      statsRes,
+      paqRes,
+      entretienTotalsRes,
+      entretienEvolutionRes
+    ] = await Promise.all([
+      dashboardService.getStats(params).catch(err => ({ data: {} })),
+      paqService.getAll(params).catch(err => ({ data: [] })),
+      dashboardService.getEntretiensTotals(params).catch(err => ({ data: {} })),
+      dashboardService.getEntretiensEvolution(params).catch(err => {
+        console.warn("Erreur évolution:", err);
+        return { data: null };
+      }),
+    ]);
 
-      const paqs = paqRes.data || [];
-      const paqActifs = paqs.filter(p => p.statut !== "CLOTURE" && p.statut !== "ARCHIVE");
+    // Traitement des PAQs
+    const paqs = paqRes.data || [];
+    const paqActifs = paqs.filter(p => p.statut !== "CLOTURE" && p.statut !== "ARCHIVE");
+    const paqParNiveau = {};
+    paqs.forEach(p => {
+      const niveau = p.niveau || 1;
+      paqParNiveau[niveau] = (paqParNiveau[niveau] || 0) + 1;
+    });
 
-      const paqParNiveau = {};
-      paqs.forEach(p => {
-        const niveau = p.niveau || 1;
-        paqParNiveau[niveau] = (paqParNiveau[niveau] || 0) + 1;
+    setStats({
+      totalCollaborateurs: statsRes.data?.totalCollaborateurs || 0,
+      paqEnCours: paqActifs,
+      paqParNiveau,
+      sansFaute: statsRes.data?.sansFaute || [],
+    });
+
+    // Traitement des totaux
+    const totals = entretienTotalsRes.data || {};
+    const totalEntretiens = (totals.explicatif || 0) + (totals.accord || 0) + 
+                           (totals.mesure || 0) + (totals.decision || 0) + (totals.final || 0);
+    
+    setEntretienTotals({
+      explicatif: totals.explicatif || 0,
+      accord: totals.accord || 0,
+      mesure: totals.mesure || 0,
+      decision: totals.decision || 0,
+      final: totals.final || 0,
+      total: totalEntretiens
+    });
+    
+    // ===== CORRECTION IMPORTANTE =====
+    // Traitement des données d'évolution - Gestion multiple des structures
+    let evolutionData = [];
+    
+    console.log("=== DÉBOGAGE RÉPONSE ÉVOLUTION ===");
+    console.log("entretienEvolutionRes complet:", entretienEvolutionRes);
+    console.log("entretienEvolutionRes.data:", entretienEvolutionRes?.data);
+    console.log("Type de entretienEvolutionRes:", typeof entretienEvolutionRes);
+    
+    // Vérifier différentes structures possibles
+    if (entretienEvolutionRes?.data && Array.isArray(entretienEvolutionRes.data)) {
+      // Structure: { data: [...] }
+      evolutionData = entretienEvolutionRes.data;
+      console.log("✅ Structure 1: data est un tableau");
+    } 
+    else if (entretienEvolutionRes?.data && typeof entretienEvolutionRes.data === 'object') {
+      // Structure: { data: { ... } } - peut-être un objet avec des propriétés
+      console.log("⚠️ Structure 2: data est un objet", entretienEvolutionRes.data);
+      // Essayer de convertir l'objet en tableau
+      if (entretienEvolutionRes.data.content && Array.isArray(entretienEvolutionRes.data.content)) {
+        evolutionData = entretienEvolutionRes.data.content;
+      } else if (entretienEvolutionRes.data.items && Array.isArray(entretienEvolutionRes.data.items)) {
+        evolutionData = entretienEvolutionRes.data.items;
+      }
+    }
+    else if (Array.isArray(entretienEvolutionRes)) {
+      // Structure: directement un tableau
+      evolutionData = entretienEvolutionRes;
+      console.log("✅ Structure 3: réponse directe est un tableau");
+    }
+    
+   
+    
+    console.log("=== DONNÉES FINALES ===");
+    console.log("evolutionData:", evolutionData);
+    console.log("Nombre de mois:", evolutionData.length);
+    
+    setEntretienEvolution(evolutionData);
+    
+    // Calcul de la tendance et de la valeur max
+    if (evolutionData.length > 0) {
+      const values = evolutionData.map(item => {
+        const count = typeof item.count === 'number' ? item.count : Number(item.count) || 0;
+        console.log(`- ${item.periode}: ${count}`);
+        return count;
       });
-
-      setStats({
-        totalCollaborateurs: statsRes.data?.totalCollaborateurs || 0,
-        paqEnCours: paqActifs,
-        paqParNiveau,
-        sansFaute: statsRes.data?.sansFaute || [],
-      });
-
-      const totals = entretienTotalsRes.data || {};
-      const totalEntretiens = (totals.explicatif || 0) + (totals.accord || 0) + (totals.mesure || 0) + (totals.decision || 0) + (totals.final || 0);
+      const maxVal = Math.max(...values, 1);
+      setMaxEvolutionValue(maxVal);
+      console.log("Valeur max pour échelle:", maxVal);
       
-      setEntretienTotals({
-        explicatif: totals.explicatif || 0,
-        accord: totals.accord || 0,
-        mesure: totals.mesure || 0,
-        decision: totals.decision || 0,
-        final: totals.final || 0,
-        total: totalEntretiens
-      });
-      
-      // Traitement des données d'évolution
-      const evolutionData = entretienEvolutionRes.data || [];
-      console.log("Données d'évolution reçues:", evolutionData);
-      
-      setEntretienEvolution(evolutionData);
-      
-      // Calcul de la tendance et de la valeur max
-      if (evolutionData.length > 0) {
-        const values = evolutionData.map(item => item.count || 0);
-        const maxVal = Math.max(...values, 1);
-        setMaxEvolutionValue(maxVal);
-        
-        // Calcul du pourcentage de tendance
-        if (evolutionData.length >= 2) {
-          const firstValue = evolutionData[0]?.count || 0;
-          const lastValue = evolutionData[evolutionData.length - 1]?.count || 0;
-          if (firstValue > 0) {
-            const change = ((lastValue - firstValue) / firstValue) * 100;
-            setTrendPercentage(Math.abs(Math.round(change)));
-          } else {
-            setTrendPercentage(12); // Valeur par défaut
-          }
+      if (evolutionData.length >= 2) {
+        const firstValue = values[0];
+        const lastValue = values[values.length - 1];
+        if (firstValue > 0) {
+          const change = ((lastValue - firstValue) / firstValue) * 100;
+          setTrendPercentage(Math.abs(Math.round(change)));
+          console.log(`Tendance: ${firstValue} → ${lastValue} (${change}%)`);
         } else {
           setTrendPercentage(12);
         }
-      } 
-
-    } catch (error) {
-      console.error("Erreur chargement dashboard", error);
-      showErrorAlert("Erreur", "Impossible de charger les statistiques");
-      
-  
-    } finally {
-      setLoading(false);
+      } else {
+        setTrendPercentage(12);
+      }
     }
-  };
+
+  } catch (error) {
+    console.error("Erreur chargement dashboard", error);
+    showErrorAlert("Erreur", "Impossible de charger les statistiques");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleExport = async (format) => {
     setExportLoading(true);
@@ -183,7 +222,6 @@ export default function Dashboard() {
   };
 
   // Ordre des mois pour l'affichage
-  const monthOrder = ["Oct", "Nov", "Déc", "Jan", "Fév", "Mar"];
   
   // Créer un map des données d'évolution par mois
   const evolutionMap = {};
@@ -192,12 +230,16 @@ export default function Dashboard() {
       evolutionMap[item.periode] = item.count;
     }
   });
+  
 
   // S'assurer que tous les mois sont présents
-  const chartData = monthOrder.map(month => ({
-    month,
-    value: evolutionMap[month] || 0
-  }));
+
+  const chartData = entretienEvolution.map(item => ({
+  month: item.periode,
+  value: item.count || 0
+}));
+console.log("Chart data final:", chartData);
+
 
   return (
     <div className="dashboard-page">

@@ -68,6 +68,10 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/auth/refresh-token").permitAll()
                         .requestMatchers("/api/auth/forgot-password").permitAll()
 
+                        .requestMatchers("/api/auth/reset-password").permitAll()
+                        .requestMatchers("/api/auth/validate-reset-token").permitAll()
+
+
                         // CRITIQUE : Sites & Plants doivent être publics car utilisés
                         // AVANT la connexion (page SiteSelection → PlantSelection → Login)
                         .requestMatchers(HttpMethod.GET, "/api/sites").permitAll()

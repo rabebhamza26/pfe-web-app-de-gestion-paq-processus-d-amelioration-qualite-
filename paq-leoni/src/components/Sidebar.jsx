@@ -36,12 +36,7 @@ function Sidebar() {
             {t("notifications")}
           </NavLink>
         </li>
-{isSL && (
-<li><NavLink to="/qualifications" className="nav-link">
-    <i className="fas fa-clipboard-list"></i>
-    Qualifications
-</NavLink></li>
-)}
+
         
         <li><NavLink to="/archive">{t("archive")}</NavLink></li>
       </ul>

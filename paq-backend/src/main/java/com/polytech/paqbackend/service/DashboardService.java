@@ -1,17 +1,9 @@
 package com.polytech.paqbackend.service;
 
-import com.polytech.paqbackend.dto.DashboardStatsDTO;
-import com.polytech.paqbackend.dto.SegmentStatsDTO;
-import com.polytech.paqbackend.dto.PerformanceHistoryDTO;
-import com.polytech.paqbackend.dto.CollaborateurDTO;
-import com.polytech.paqbackend.entity.Collaborator;
-import com.polytech.paqbackend.entity.PaqDossier;
-import com.polytech.paqbackend.entity.User;
-import com.polytech.paqbackend.repository.CollaboratorRepository;
-import com.polytech.paqbackend.repository.PaqRepository;
-import com.polytech.paqbackend.repository.UserRepository;
+import com.polytech.paqbackend.dto.*;
+import com.polytech.paqbackend.entity.*;
+import com.polytech.paqbackend.repository.*;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -25,118 +17,64 @@ import java.util.stream.Collectors;
 @Service
 public class DashboardService {
 
-    @Autowired
-    private PaqRepository paqRepository;
+    private final PaqRepository paqRepository;
+    private final CollaboratorRepository collaboratorRepository;
+    private final UserRepository userRepository;
+    private final EntretienExplicatifRepository entretienExplicatifRepository;
+    private final EntretienDaccordRepository entretienDaccordRepository;
+    private final EntretienMesureRepository entretienMesureRepository;
+    private final EntretienDecisionRepository entretienDecisionRepository;
+    private final EntretienFinalRepository entretienFinalRepository;
 
-    @Autowired
-    private CollaboratorRepository collaboratorRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    // =========================================================
-    // Méthode utilitaire : récupère l'utilisateur connecté
-    // =========================================================
-    private User getCurrentUser() {
-        try {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth == null || !auth.isAuthenticated()
-                    || "anonymousUser".equals(auth.getPrincipal())) {
-                return null;
-            }
-            String username = auth.getName();
-            User user = userRepository.findByEmail(username);
-            if (user == null) {
-                user = userRepository.findByLogin(username);
-            }
-            return user;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
+    public DashboardService(PaqRepository paqRepository,
+                            CollaboratorRepository collaboratorRepository,
+                            UserRepository userRepository,
+                            EntretienExplicatifRepository entretienExplicatifRepository,
+                            EntretienDaccordRepository entretienDaccordRepository,
+                            EntretienMesureRepository entretienMesureRepository,
+                            EntretienDecisionRepository entretienDecisionRepository,
+                            EntretienFinalRepository entretienFinalRepository) {
+        this.paqRepository = paqRepository;
+        this.collaboratorRepository = collaboratorRepository;
+        this.userRepository = userRepository;
+        this.entretienExplicatifRepository = entretienExplicatifRepository;
+        this.entretienDaccordRepository = entretienDaccordRepository;
+        this.entretienMesureRepository = entretienMesureRepository;
+        this.entretienDecisionRepository = entretienDecisionRepository;
+        this.entretienFinalRepository = entretienFinalRepository;
     }
 
-    // =========================================================
-    // Méthode utilitaire : segments accessibles pour un user
-    // =========================================================
-    private Set<String> getAccessibleSegments(User user) {
-        Set<String> segments = new HashSet<>();
-        if (user == null) return segments;
-
-        // Segments directement assignés
-        if (user.getSegments() != null) {
-            user.getSegments().forEach(s -> {
-                if (s != null && s.getNomSegment() != null) segments.add(s.getNomSegment());
-            });
-        }
-        // Segments via les plants assignés
-        if (user.getPlants() != null) {
-            user.getPlants().forEach(p -> {
-                if (p != null && p.getSegments() != null) {
-                    p.getSegments().forEach(s -> {
-                        if (s != null && s.getNomSegment() != null) segments.add(s.getNomSegment());
-                    });
-                }
-            });
-        }
-        // Segments via les sites assignés
-        if (user.getSites() != null) {
-            user.getSites().forEach(site -> {
-                if (site != null && site.getPlants() != null) {
-                    site.getPlants().forEach(p -> {
-                        if (p != null && p.getSegments() != null) {
-                            p.getSegments().forEach(s -> {
-                                if (s != null && s.getNomSegment() != null) segments.add(s.getNomSegment());
-                            });
-                        }
-                    });
-                }
-            });
-        }
-        return segments;
-    }
-
-    // =========================================================
-    // Stats principales
-    // =========================================================
     public DashboardStatsDTO getStats(Long siteId, Long plantId) {
         DashboardStatsDTO dto = new DashboardStatsDTO();
+        List<CollaborateurDTO> filteredDTOs = getFilteredCollaboratorDTOs(siteId, plantId);
+        List<Collaborator> filteredCollabs = getFilteredCollaborators(siteId, plantId);
+        List<PaqDossier> filteredPaqs = getFilteredPaqs(siteId, plantId);
 
-        List<CollaborateurDTO> filteredDTOs   = getFilteredCollaboratorDTOs(siteId, plantId);
-        List<Collaborator>     filteredCollabs = getFilteredCollaborators(siteId, plantId);
-        List<PaqDossier>       filteredPaqs   = getFilteredPaqs(siteId, plantId);
-
-        // Total collaborateurs dans le périmètre
-        dto.setTotalCollaborateurs((long) filteredCollabs.size());
+        dto.setTotalCollaborateurs(filteredCollabs.size());
         dto.setTotalPaqs(filteredPaqs.size());
 
-        // PAQ actifs (non clôturés / non archivés)
         long paqActifs = filteredPaqs.stream()
                 .filter(p -> !"CLOTURE".equals(p.getStatut()) && !"ARCHIVE".equals(p.getStatut()))
                 .count();
-        dto.setPaqEnCours((int) paqActifs);
+        dto.setPaqEnCours(paqActifs);
 
-        // Répartition par niveau
         Map<Integer, Long> paqParNiveau = filteredPaqs.stream()
                 .collect(Collectors.groupingBy(PaqDossier::getNiveau, Collectors.counting()));
         dto.setPaqParNiveau(paqParNiveau);
 
-        // Collaborateurs sans faute dans le périmètre
         List<CollaborateurDTO> sansFaute = filteredDTOs.stream()
                 .filter(c -> c.getNiveau() == 0 || "POSITIF".equals(c.getStatut()))
-                .collect(Collectors.toList());
+                .toList();
         dto.setSansFaute(sansFaute);
 
-        // Stats utilisateurs — globales (non filtrées par site/plant)
-        long totalUsers       = userRepository.count();
-        long activeUsers      = userRepository.countByActiveTrue();
-        long inactiveUsers    = userRepository.countByActiveFalse();
+        long totalUsers = userRepository.count();
+        long activeUsers = userRepository.countByActiveTrue();
+        long inactiveUsers = userRepository.countByActiveFalse();
         dto.setTotalUsers(totalUsers);
         dto.setActiveUsers(activeUsers);
         dto.setInactiveUsers(inactiveUsers);
 
-        LocalDateTime startOfMonth = LocalDateTime.now()
-                .withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
+        LocalDateTime startOfMonth = LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
         dto.setNewUsersThisMonth(userRepository.countByCreatedAtAfter(startOfMonth));
 
         long newPaqsThisMonth = filteredPaqs.stream()
@@ -159,198 +97,285 @@ public class DashboardService {
         return dto;
     }
 
-    // =========================================================
-    // Statistiques par segment
-    // =========================================================
-    public List<SegmentStatsDTO> getSegmentStats(Long siteId, Long plantId) {
-        List<Collaborator> collaborateurs = getFilteredCollaborators(siteId, plantId);
-        List<PaqDossier>   paqs          = getFilteredPaqs(siteId, plantId);
+    public EntretiensTotalsDTO getEntretiensTotals(Long siteId, Long plantId) {
+        EntretiensTotalsDTO dto = new EntretiensTotalsDTO();
 
-        Map<String, List<Collaborator>> grouped = collaborateurs.stream()
-                .filter(c -> c.getSegment() != null && !c.getSegment().isEmpty())
-                .collect(Collectors.groupingBy(Collaborator::getSegment));
+        try {
+            List<String> matricules = getFilteredMatricules(siteId, plantId);
 
-        List<SegmentStatsDTO> result = new ArrayList<>();
-
-        for (Map.Entry<String, List<Collaborator>> entry : grouped.entrySet()) {
-            String segment = entry.getKey();
-            List<Collaborator> collabs = entry.getValue();
-            long total = collabs.size();
-
-            Map<Integer, Long> niveaux = new HashMap<>();
-            for (int i = 1; i <= 5; i++) niveaux.put(i, 0L);
-
-            for (Collaborator c : collabs) {
-                paqs.stream()
-                        .filter(p -> p.getCollaboratorMatricule().equals(c.getMatricule())
-                                && p.isActif() && !p.isArchived())
-                        .findFirst()
-                        .ifPresent(paq -> {
-                            int n = paq.getNiveau();
-                            niveaux.put(n, niveaux.getOrDefault(n, 0L) + 1);
-                        });
+            if (matricules == null || matricules.isEmpty()) {
+                return getDefaultTotals();
             }
 
-            long sansFaute = collabs.stream()
-                    .filter(c -> paqs.stream()
-                            .noneMatch(p -> p.getCollaboratorMatricule().equals(c.getMatricule())
-                                    && p.isActif()))
-                    .count();
-
-            result.add(new SegmentStatsDTO(
-                    segment, total,
-                    niveaux.getOrDefault(1, 0L),
-                    niveaux.getOrDefault(2, 0L),
-                    niveaux.getOrDefault(3, 0L),
-                    niveaux.getOrDefault(4, 0L),
-                    niveaux.getOrDefault(5, 0L),
-                    sansFaute
-            ));
+            dto.setExplicatif(entretienExplicatifRepository.countByMatriculeIn(matricules));
+            dto.setAccord(entretienDaccordRepository.countByMatriculeIn(matricules));
+            dto.setMesure(entretienMesureRepository.countByMatriculeIn(matricules));
+            dto.setDecision(entretienDecisionRepository.countByMatriculeIn(matricules));
+            dto.setFinal(entretienFinalRepository.countByMatriculeIn(matricules));
+        } catch (Exception e) {
+            System.err.println("Erreur lors du calcul des totaux des entretiens: " + e.getMessage());
+            return getDefaultTotals();
         }
 
-        result.sort((a, b) -> Long.compare(b.getTotalCollaborateurs(), a.getTotalCollaborateurs()));
-        return result;
+        return dto;
     }
 
-    // =========================================================
-    // Historique de performance
-    // =========================================================
-    public List<PerformanceHistoryDTO> getPerformanceHistory(Long siteId, Long plantId) {
-        List<PaqDossier> paqs = getFilteredPaqs(siteId, plantId);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/yyyy");
-
-        Map<String, List<PaqDossier>> groupedByPeriod = paqs.stream()
-                .filter(p -> p.getCreatedAt() != null)
-                .collect(Collectors.groupingBy(p -> p.getCreatedAt().format(formatter)));
-
-        List<String> sortedPeriods = new ArrayList<>(groupedByPeriod.keySet());
-        sortedPeriods.sort((a, b) -> {
-            String[] aParts = a.split("/");
-            String[] bParts = b.split("/");
-            int aYear = Integer.parseInt(aParts[1]);
-            int bYear = Integer.parseInt(bParts[1]);
-            if (aYear != bYear) return Integer.compare(aYear, bYear);
-            return Integer.compare(Integer.parseInt(aParts[0]), Integer.parseInt(bParts[0]));
-        });
-
-        List<PerformanceHistoryDTO> result = new ArrayList<>();
-        for (String periode : sortedPeriods) {
-            List<PaqDossier> paqsOfPeriod = groupedByPeriod.get(periode);
-            long amelioration = 0, stagnation = 0, regression = 0;
-            for (PaqDossier paq : paqsOfPeriod) {
-                if (paq.getNiveau() <= 1) amelioration++;
-                else if (paq.getNiveau() == 2) stagnation++;
-                else regression++;
-            }
-            result.add(new PerformanceHistoryDTO(
-                    "aggregated_" + periode,
-                    "Période " + periode,
-                    periode,
-                    0,
-                    getEvolutionType(amelioration, stagnation, regression)
-            ));
-        }
-        return result;
+    private EntretiensTotalsDTO getDefaultTotals() {
+        EntretiensTotalsDTO dto = new EntretiensTotalsDTO();
+        dto.setExplicatif(0);
+        dto.setAccord(0);
+        dto.setMesure(0);
+        dto.setDecision(0);
+        dto.setFinal(0);
+        return dto;
     }
-
-    private String getEvolutionType(long amelioration, long stagnation, long regression) {
-        if (amelioration >= stagnation && amelioration >= regression) return "AMELIORATION";
-        if (stagnation >= amelioration && stagnation >= regression) return "STAGNATION";
-        return "REGRESSION";
-    }
-
-    // =========================================================
-    // Helpers de filtrage — CORRIGÉS
-    // =========================================================
 
     /**
-     * Retourne les collaborateurs filtrés par :
-     * 1. Le périmètre du user connecté (sites/plants/segments assignés au compte)
-     * 2. Puis affinés par siteId ou plantId si fournis dans la requête.
-     *
-     * Pour les ADMIN, le périmètre est global ; les params siteId/plantId
-     * permettent quand même de filtrer l'affichage.
+     * Récupère l'évolution des entretiens sur les 6 derniers mois
+     * CORRIGÉ : Gère correctement les différents noms de colonnes de date
      */
-    private List<CollaborateurDTO> getFilteredCollaboratorDTOs(Long siteId, Long plantId) {
-        User currentUser = getCurrentUser();
+    public List<EntretienEvolutionDTO> getEntretiensEvolution(Long siteId, Long plantId) {
+        try {
+            List<String> matricules = getFilteredMatricules(siteId, plantId);
 
-        // ✅ Cas ADMIN : peut tout voir, on filtre seulement par site/plant si précisé
-        if (currentUser != null && "ADMIN".equals(currentUser.getRole().name())) {
-            if (plantId != null) {
-                return collaboratorRepository.getCollaboratorsByPlants(List.of(plantId));
-            } else if (siteId != null) {
-                return collaboratorRepository.getCollaboratorsBySites(List.of(siteId));
+            List<EntretienEvolutionDTO> result = new ArrayList<>();
+
+            // Obtenir la date actuelle
+            LocalDate now = LocalDate.now();
+
+            // Calculer les 6 derniers mois complets (en commençant par le plus ancien)
+            for (int i = 5; i >= 0; i--) {
+                LocalDate targetDate = now.minusMonths(i);
+                LocalDate startDate = targetDate.withDayOfMonth(1);
+                LocalDate endDate = targetDate.withDayOfMonth(targetDate.lengthOfMonth());
+
+                // Formater le mois (Oct, Nov, Déc, Jan, Fév, Mar, Avr, Mai, etc.)
+                String periode = formatMonthFrench(targetDate);
+
+                long count = calculateTotalEntretiensForPeriod(matricules, startDate, endDate);
+
+                System.out.println("Mois: " + periode + " (" + startDate + " à " + endDate + ") = " + count + " entretiens");
+
+                result.add(new EntretienEvolutionDTO(periode, count));
             }
-            return collaboratorRepository.getAllWithPaq();
+
+            return result;
+
+        } catch (Exception e) {
+            System.err.println("Erreur: " + e.getMessage());
+            e.printStackTrace();
+            return getDefaultEvolutionData();
+        }
+    }
+
+    private String formatMonthFrench(LocalDate date) {
+        // Map pour avoir les abréviations françaises standard
+        Map<Integer, String> monthMap = Map.ofEntries(
+                Map.entry(1, "Jan"),
+                Map.entry(2, "Fév"),
+                Map.entry(3, "Mar"),
+                Map.entry(4, "Avr"),
+                Map.entry(5, "Mai"),
+                Map.entry(6, "Juin"),
+                Map.entry(7, "Juil"),
+                Map.entry(8, "Aoû"),
+                Map.entry(9, "Sep"),
+                Map.entry(10, "Oct"),
+                Map.entry(11, "Nov"),
+                Map.entry(12, "Déc")
+        );
+        return monthMap.get(date.getMonthValue());
+    }
+
+    private List<EntretienEvolutionDTO> getDefaultEvolutionData() {
+        List<EntretienEvolutionDTO> result = new ArrayList<>();
+        LocalDate now = LocalDate.now();
+
+        for (int i = 5; i >= 0; i--) {
+            LocalDate targetDate = now.minusMonths(i);
+            String periode = formatMonthFrench(targetDate);
+            result.add(new EntretienEvolutionDTO(periode, 0));
+        }
+        return result;
+    }
+    /**
+     * Calcule le total des entretiens pour une période donnée
+     * CORRIGÉ : Utilise le bon nom de colonne pour chaque type d'entretien
+     */
+    private long calculateTotalEntretiensForPeriod(List<String> matricules, LocalDate startDate, LocalDate endDate) {
+        long total = 0;
+
+        System.out.println("Calcul pour période: " + startDate + " à " + endDate);
+        System.out.println("Nombre de matricules: " + (matricules != null ? matricules.size() : 0));
+
+        try {
+            long explicatif = entretienExplicatifRepository.countByMatriculeInAndDateBetween(matricules, startDate, endDate);
+            System.out.println("Entretiens explicatifs: " + explicatif);
+            total += explicatif;
+        } catch (Exception e) {
+            System.err.println("Erreur EntretienExplicatif: " + e.getMessage());
         }
 
-        // ✅ Autres rôles : périmètre restreint aux segments/plants/sites assignés
-        if (currentUser != null) {
-            // Priorité : plant sélectionné ET dans les plants du user
-            if (plantId != null) {
-                boolean plantAllowed = currentUser.getPlants() != null
-                        && currentUser.getPlants().stream().anyMatch(p -> p.getId().equals(plantId));
-                if (plantAllowed) {
-                    return collaboratorRepository.getCollaboratorsByPlants(List.of(plantId));
-                }
-                // Plant demandé non autorisé → liste vide
+        try {
+            long accord = entretienDaccordRepository.countByMatriculeInAndDateBetween(matricules, startDate, endDate);
+            System.out.println("Entretiens d'accord: " + accord);
+            total += accord;
+        } catch (Exception e) {
+            System.err.println("Erreur EntretienDaccord: " + e.getMessage());
+        }
+
+        try {
+            long mesure = entretienMesureRepository.countByMatriculeInAndDateBetween(matricules, startDate, endDate);
+            System.out.println("Entretiens mesure: " + mesure);
+            total += mesure;
+        } catch (Exception e) {
+            System.err.println("Erreur EntretienMesure: " + e.getMessage());
+        }
+
+        try {
+            long decision = entretienDecisionRepository.countByMatriculeInAndDateBetween(matricules, startDate, endDate);
+            System.out.println("Entretiens decision: " + decision);
+            total += decision;
+        } catch (Exception e) {
+            System.err.println("Erreur EntretienDecision: " + e.getMessage());
+        }
+
+        try {
+            long finalEnt = entretienFinalRepository.countByMatriculeInAndDateBetween(matricules, startDate, endDate);
+            System.out.println("Entretiens finaux: " + finalEnt);
+            total += finalEnt;
+        } catch (Exception e) {
+            System.err.println("Erreur EntretienFinal: " + e.getMessage());
+        }
+
+        System.out.println("Total pour la période: " + total);
+        return total;
+    }
+    /**
+     * Données mock pour le développement et les tests
+     */
+
+    private List<String> getFilteredMatricules(Long siteId, Long plantId) {
+        try {
+            List<CollaborateurDTO> dtos = getFilteredCollaboratorDTOs(siteId, plantId);
+            if (dtos == null || dtos.isEmpty()) {
                 return new ArrayList<>();
             }
+            return dtos.stream()
+                    .map(CollaborateurDTO::getMatricule)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            System.err.println("Erreur getFilteredMatricules: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
 
-            // Site sélectionné ET dans les sites du user
-            if (siteId != null) {
-                boolean siteAllowed = currentUser.getSites() != null
-                        && currentUser.getSites().stream().anyMatch(s -> s.getId().equals(siteId));
-                if (siteAllowed) {
+    private User getCurrentUser() {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
+                return null;
+            }
+            String username = auth.getName();
+            User user = userRepository.findByEmail(username);
+            if (user == null) {
+                user = userRepository.findByLogin(username);
+            }
+            return user;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private Set<String> getAccessibleSegments(User user) {
+        Set<String> segments = new HashSet<>();
+        if (user == null) return segments;
+        if (user.getSegments() != null) {
+            user.getSegments().forEach(s -> {
+                if (s != null && s.getNomSegment() != null) segments.add(s.getNomSegment());
+            });
+        }
+        if (user.getPlants() != null) {
+            user.getPlants().forEach(p -> {
+                if (p != null && p.getSegments() != null) {
+                    p.getSegments().forEach(s -> {
+                        if (s != null && s.getNomSegment() != null) segments.add(s.getNomSegment());
+                    });
+                }
+            });
+        }
+        if (user.getSites() != null) {
+            user.getSites().forEach(site -> {
+                if (site != null && site.getPlants() != null) {
+                    site.getPlants().forEach(p -> {
+                        if (p != null && p.getSegments() != null) {
+                            p.getSegments().forEach(s -> {
+                                if (s != null && s.getNomSegment() != null) segments.add(s.getNomSegment());
+                            });
+                        }
+                    });
+                }
+            });
+        }
+        return segments;
+    }
+
+    private List<CollaborateurDTO> getFilteredCollaboratorDTOs(Long siteId, Long plantId) {
+        try {
+            User currentUser = getCurrentUser();
+            boolean isAdmin = currentUser != null && currentUser.getRole() != null && "ADMIN".equals(currentUser.getRole().name());
+
+            if (isAdmin) {
+                if (plantId != null) {
+                    return collaboratorRepository.getCollaboratorsByPlants(List.of(plantId));
+                } else if (siteId != null) {
                     return collaboratorRepository.getCollaboratorsBySites(List.of(siteId));
                 }
-                return new ArrayList<>();
+                return collaboratorRepository.getAllWithPaq();
             }
 
-            // Pas de filtre site/plant : retourner tout le périmètre segments du user
-            Set<String> accessibleSegments = getAccessibleSegments(currentUser);
-            if (accessibleSegments.isEmpty()) return new ArrayList<>();
-            return collaboratorRepository.getCollaboratorsBySegments(
-                    new ArrayList<>(accessibleSegments));
+            if (currentUser != null) {
+                if (plantId != null && isPlantAllowed(currentUser, plantId)) {
+                    return collaboratorRepository.getCollaboratorsByPlants(List.of(plantId));
+                }
+                if (siteId != null && isSiteAllowed(currentUser, siteId)) {
+                    return collaboratorRepository.getCollaboratorsBySites(List.of(siteId));
+                }
+                Set<String> accessibleSegments = getAccessibleSegments(currentUser);
+                if (!accessibleSegments.isEmpty()) {
+                    return collaboratorRepository.getCollaboratorsBySegments(new ArrayList<>(accessibleSegments));
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Erreur getFilteredCollaboratorDTOs: " + e.getMessage());
         }
-
         return new ArrayList<>();
     }
 
-    /**
-     * Retourne les entités Collaborator filtrées selon le même principe.
-     * Utilisé pour les calculs internes (actif, depart…).
-     */
-    private List<Collaborator> getFilteredCollaborators(Long siteId, Long plantId) {
-        // On réutilise les DTOs pour obtenir les matricules filtrés,
-        // puis on charge les entités complètes correspondantes.
-        List<CollaborateurDTO> dtos = getFilteredCollaboratorDTOs(siteId, plantId);
-        Set<String> matricules = dtos.stream()
-                .map(CollaborateurDTO::getMatricule)
-                .collect(Collectors.toSet());
-
-        if (matricules.isEmpty()) return new ArrayList<>();
-
-        return collaboratorRepository.findByDepartFalseAndArchivedFalse().stream()
-                .filter(c -> matricules.contains(c.getMatricule()))
-                .collect(Collectors.toList());
+    private boolean isPlantAllowed(User user, Long plantId) {
+        return user.getPlants() != null && user.getPlants().stream().anyMatch(p -> p.getId().equals(plantId));
     }
 
-    /**
-     * Retourne les PAQ des collaborateurs du périmètre filtré.
-     */
-    private List<PaqDossier> getFilteredPaqs(Long siteId, Long plantId) {
-        // Récupérer les matricules autorisés
+    private boolean isSiteAllowed(User user, Long siteId) {
+        return user.getSites() != null && user.getSites().stream().anyMatch(s -> s.getId().equals(siteId));
+    }
+
+    private List<Collaborator> getFilteredCollaborators(Long siteId, Long plantId) {
         List<CollaborateurDTO> dtos = getFilteredCollaboratorDTOs(siteId, plantId);
-        Set<String> matricules = dtos.stream()
-                .map(CollaborateurDTO::getMatricule)
-                .collect(Collectors.toSet());
-
+        Set<String> matricules = dtos.stream().map(CollaborateurDTO::getMatricule).collect(Collectors.toSet());
         if (matricules.isEmpty()) return new ArrayList<>();
+        return collaboratorRepository.findByDepartFalseAndArchivedFalse().stream()
+                .filter(c -> matricules.contains(c.getMatricule()))
+                .toList();
+    }
 
-        // Charger tous les PAQ non archivés et filtrer par matricule autorisé
+    private List<PaqDossier> getFilteredPaqs(Long siteId, Long plantId) {
+        List<CollaborateurDTO> dtos = getFilteredCollaboratorDTOs(siteId, plantId);
+        Set<String> matricules = dtos.stream().map(CollaborateurDTO::getMatricule).collect(Collectors.toSet());
+        if (matricules.isEmpty()) return new ArrayList<>();
         return paqRepository.findAll().stream()
                 .filter(p -> !p.isArchived() && matricules.contains(p.getCollaboratorMatricule()))
-                .collect(Collectors.toList());
+                .toList();
     }
 }

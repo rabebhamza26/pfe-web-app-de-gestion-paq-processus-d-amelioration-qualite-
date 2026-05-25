@@ -277,4 +277,8 @@ public interface CollaboratorRepository extends JpaRepository<Collaborator, Stri
         ORDER BY c.matricule
     """)
     List<CollaborateurDTO> getCollaboratorsByPlants(@Param("plantIds") List<Long> plantIds);
+
+
+    @Query("SELECT c FROM Collaborator c WHERE c.hireDate <= :date AND c.actif = true AND c.depart = false AND c.archived = false")
+    List<Collaborator> findActiveCollaboratorsByHireDateBefore(@Param("date") LocalDate date);
 }

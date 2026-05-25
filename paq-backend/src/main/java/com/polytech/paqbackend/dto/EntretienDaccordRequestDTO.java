@@ -10,6 +10,16 @@ public class EntretienDaccordRequestDTO {
     private String typeFaute;
     private String causeFaute;
 
+    private Double casca; // NOUVEAU
+
+    public Double getCasca() {
+        return casca;
+    }
+
+    public void setCasca(Double casca) {
+        this.casca = casca;
+    }
+
     public String getDestinataireEmail() {
         return destinataireEmail;
     }

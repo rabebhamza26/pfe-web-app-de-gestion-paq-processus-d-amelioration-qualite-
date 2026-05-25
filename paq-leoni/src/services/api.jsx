@@ -116,6 +116,29 @@ export const userService = {
   // Récupérer les emails par plusieurs Sites et Plants
   getEmailsBySitesAndPlants: (siteIds, plantIds) => 
     API.post(`/api/users/emails/by-sites-plants`, { siteIds, plantIds }),
+
+    getQMEmails: () => API.get("/api/users/qm-emails"),
+
+    getQMEmailsByPerimeter: () => API.get("/api/users/qm-emails/by-perimeter"),
+
+
+    // Dans api.js - userService
+getQMEmailsByPerimeter: () => API.get("/api/users/qm-emails/by-perimeter"),
+getSGLEmailsByPerimeter: () => API.get("/api/users/sgl-emails/by-perimeter"),
+getQMAndSGLEmailsByPerimeter: () => Promise.all([
+  API.get("/api/users/qm-emails/by-perimeter"),
+  API.get("/api/users/sgl-emails/by-perimeter")
+]).then(([qmRes, sglRes]) => {
+  const qmEmails = Array.isArray(qmRes.data) ? qmRes.data : [];
+  const sglEmails = Array.isArray(sglRes.data) ? sglRes.data : [];
+  // Fusionner et dédoublonner
+  const allEmails = [...new Set([...qmEmails, ...sglEmails])];
+  return { data: allEmails, qmEmails, sglEmails };
+}),
+
+getHPEmailsByPerimeter: () => API.get("/api/users/hp-emails/by-perimeter"),
+getQMPlantEmailsByPerimeter: () => API.get("/api/users/qmplant-emails/by-perimeter"),
+getHPSGLQMPlantEmailsByPerimeter: () => API.get("/api/users/hp-sgl-qmplant-emails/by-perimeter"),
 };
 
 // ------------------ Segment Service ------------------
@@ -336,12 +359,12 @@ export const fauteService = {
   create: (data) => API.post("/api/fautes", data),
 };
 
-export const qualificationService = {
+/*export const qualificationService = {
     getAll: () => API.get("/api/qualification"),
     getPending: () => API.get("/api/qualification/pending"),
     getByMatricule: (matricule) => API.get(`/api/qualification/collaborateur/${matricule}`),
     forcerEnvoi: (id) => API.post(`/api/qualification/${id}/forcer-envoi`),
-};
+};*/
 
 
 
@@ -397,6 +420,9 @@ export const passwordResetService = {
         }
     }
 };
+
+
+
 
 
 export default API;

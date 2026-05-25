@@ -21,35 +21,78 @@ import {
   showSuccessToast,
 } from "../../utils/entretienAlerts";
 
-// ─── Modal Email pour sélection multiple (SL) ─────────────────────────────
-function EmailModal({ isOpen, onClose, onConfirm, usersList, loadingUsers }) {
+// ─── Modal Email pour sélection multiple (SL) avec séparation QM et SGL ───
+function EmailModal({ isOpen, onClose, onConfirm, qmEmails, sglEmails, loadingEmails }) {
   const [selectedEmails, setSelectedEmails] = useState([]);
+  const [selectedQmEmails, setSelectedQmEmails] = useState([]);
+  const [selectedSglEmails, setSelectedSglEmails] = useState([]);
+  const [selectAllQm, setSelectAllQm] = useState(false);
+  const [selectAllSgl, setSelectAllSgl] = useState(false);
 
+  // Mise à jour de la sélection totale quand les sélections QM ou SGL changent
+  useEffect(() => {
+    const allSelected = [...selectedQmEmails, ...selectedSglEmails];
+    setSelectedEmails(allSelected);
+  }, [selectedQmEmails, selectedSglEmails]);
+
+  // Mise à jour du bouton "Tout sélectionner" QM
+  useEffect(() => {
+    if (qmEmails.length > 0) {
+      setSelectAllQm(selectedQmEmails.length === qmEmails.length);
+    } else {
+      setSelectAllQm(false);
+    }
+  }, [selectedQmEmails, qmEmails]);
+
+  // Mise à jour du bouton "Tout sélectionner" SGL
+  useEffect(() => {
+    if (sglEmails.length > 0) {
+      setSelectAllSgl(selectedSglEmails.length === sglEmails.length);
+    } else {
+      setSelectAllSgl(false);
+    }
+  }, [selectedSglEmails, sglEmails]);
+
+  // Réinitialisation quand la modal s'ouvre
   useEffect(() => {
     if (isOpen) {
+      setSelectedQmEmails([]);
+      setSelectedSglEmails([]);
       setSelectedEmails([]);
+      setSelectAllQm(false);
+      setSelectAllSgl(false);
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const toggleEmailSelection = (email) => {
-    if (selectedEmails.includes(email)) {
-      setSelectedEmails(selectedEmails.filter(e => e !== email));
+  const toggleQmEmail = (email) => {
+    setSelectedQmEmails(prev => 
+      prev.includes(email) ? prev.filter(e => e !== email) : [...prev, email]
+    );
+  };
+
+  const toggleSglEmail = (email) => {
+    setSelectedSglEmails(prev => 
+      prev.includes(email) ? prev.filter(e => e !== email) : [...prev, email]
+    );
+  };
+
+  const toggleAllQm = () => {
+    if (selectAllQm) {
+      setSelectedQmEmails([]);
     } else {
-      setSelectedEmails([...selectedEmails, email]);
+      setSelectedQmEmails([...qmEmails]);
     }
   };
 
-  const toggleAllEmails = () => {
-    if (selectedEmails.length === usersList.length && usersList.length > 0) {
-      setSelectedEmails([]);
+  const toggleAllSgl = () => {
+    if (selectAllSgl) {
+      setSelectedSglEmails([]);
     } else {
-      setSelectedEmails(usersList.map(u => u.email));
+      setSelectedSglEmails([...sglEmails]);
     }
   };
-
-  const allSelected = usersList.length > 0 && selectedEmails.length === usersList.length;
 
   return (
     <div className="leoni-modal-overlay" onClick={onClose}>
@@ -57,69 +100,136 @@ function EmailModal({ isOpen, onClose, onConfirm, usersList, loadingUsers }) {
         <div className="leoni-modal-header">
           <div>
             <h3>Envoyer la convocation</h3>
-            <p>Sélectionnez les destinataires pour l'entretien de mesure</p>
+            <p>Sélectionnez les QM-Segment et SGL à convoquer pour l'entretien de mesure</p>
           </div>
           <button className="leoni-modal-close" onClick={onClose}>✕</button>
         </div>
 
         <div className="leoni-modal-body">
-          <div style={{ marginBottom: 20, border: "1px solid #e2e8f0", borderRadius: "8px", overflow: "hidden" }}>
-            <div style={{ 
-              padding: "12px", 
-              background: "#f8f9fa", 
-              borderBottom: "1px solid #e2e8f0",
-              display: "flex",
-              alignItems: "center",
-              gap: "12px"
-            }}>
-              <input
-                type="checkbox"
-                checked={allSelected}
-                onChange={toggleAllEmails}
-                style={{ width: "18px", height: "18px", cursor: "pointer" }}
-              />
-              <strong style={{ flex: 1 }}>Sélectionner tous les {usersList.length} utilisateur(s)</strong>
-              <span style={{ fontSize: "12px", color: "#666" }}>
-                {selectedEmails.length} sélectionné(s)
-              </span>
+          {loadingEmails ? (
+            <div style={{ padding: "40px", textAlign: "center", color: "#999" }}>
+              <div className="leoni-spinner" style={{ margin: "0 auto 10px" }}></div>
+              Chargement des emails...
             </div>
-            <div style={{ maxHeight: "300px", overflow: "auto" }}>
-              {usersList.length > 0 ? (
-                usersList.map((user, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      padding: "12px",
-                      borderBottom: "1px solid #e2e8f0",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                      background: selectedEmails.includes(user.email) ? "#f0f9ff" : "white",
-                      cursor: "pointer"
-                    }}
-                    onClick={() => toggleEmailSelection(user.email)}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedEmails.includes(user.email)}
-                      onChange={() => toggleEmailSelection(user.email)}
-                      style={{ width: "18px", height: "18px", cursor: "pointer" }}
-                    />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 500, color: "#1a202c" }}>{user.email}</div>
-                      <div style={{ fontSize: "12px", color: "#718096" }}>
-                        {user.nomUtilisateur || user.email.split('@')[0]}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div style={{ padding: "40px", textAlign: "center", color: "#999" }}>
-                  {loadingUsers ? "Chargement des emails..." : "Aucun email trouvé dans la base de données"}
+          ) : (
+            <>
+              {/* Section QM_SEGMENT */}
+              <div style={{ marginBottom: 20, border: "1px solid #e2e8f0", borderRadius: "8px", overflow: "hidden" }}>
+                <div style={{ 
+                  padding: "12px", 
+                  background: "#f0f9ff", 
+                  borderBottom: "1px solid #e2e8f0",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px"
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={selectAllQm}
+                    onChange={toggleAllQm}
+                    style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                    disabled={qmEmails.length === 0}
+                  />
+                  <strong style={{ flex: 1 }}>QM-Segment ({qmEmails.length})</strong>
+                  <span style={{ fontSize: "12px", color: "#666" }}>
+                    {selectedQmEmails.length} sélectionné(s)
+                  </span>
                 </div>
-              )}
-            </div>
-          </div>
+                <div style={{ maxHeight: "200px", overflow: "auto" }}>
+                  {qmEmails.length > 0 ? (
+                    qmEmails.map((email, idx) => (
+                      <div
+                        key={`qm-${idx}`}
+                        style={{
+                          padding: "12px",
+                          borderBottom: "1px solid #e2e8f0",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                          background: selectedQmEmails.includes(email) ? "#e6f7ff" : "white",
+                          cursor: "pointer"
+                        }}
+                        onClick={() => toggleQmEmail(email)}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedQmEmails.includes(email)}
+                          onChange={() => toggleQmEmail(email)}
+                          style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 500, color: "#1a202c" }}>{email}</div>
+                          <div style={{ fontSize: "12px", color: "#3182ce" }}>QM-Segment</div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ padding: "20px", textAlign: "center", color: "#999" }}>
+                      Aucun QM-Segment trouvé dans votre périmètre
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Section SGL */}
+              <div style={{ marginBottom: 20, border: "1px solid #e2e8f0", borderRadius: "8px", overflow: "hidden" }}>
+                <div style={{ 
+                  padding: "12px", 
+                  background: "#f0fff4", 
+                  borderBottom: "1px solid #e2e8f0",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px"
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={selectAllSgl}
+                    onChange={toggleAllSgl}
+                    style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                    disabled={sglEmails.length === 0}
+                  />
+                  <strong style={{ flex: 1 }}>SGL ({sglEmails.length})</strong>
+                  <span style={{ fontSize: "12px", color: "#666" }}>
+                    {selectedSglEmails.length} sélectionné(s)
+                  </span>
+                </div>
+                <div style={{ maxHeight: "200px", overflow: "auto" }}>
+                  {sglEmails.length > 0 ? (
+                    sglEmails.map((email, idx) => (
+                      <div
+                        key={`sgl-${idx}`}
+                        style={{
+                          padding: "12px",
+                          borderBottom: "1px solid #e2e8f0",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                          background: selectedSglEmails.includes(email) ? "#e6fffa" : "white",
+                          cursor: "pointer"
+                        }}
+                        onClick={() => toggleSglEmail(email)}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedSglEmails.includes(email)}
+                          onChange={() => toggleSglEmail(email)}
+                          style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 500, color: "#1a202c" }}>{email}</div>
+                          <div style={{ fontSize: "12px", color: "#38a169" }}>SGL</div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ padding: "20px", textAlign: "center", color: "#999" }}>
+                      Aucun SGL trouvé dans votre périmètre
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="leoni-modal-footer">
@@ -130,7 +240,7 @@ function EmailModal({ isOpen, onClose, onConfirm, usersList, loadingUsers }) {
             type="button" 
             className="leoni-btn leoni-btn-primary" 
             onClick={() => onConfirm(selectedEmails)}
-            disabled={selectedEmails.length === 0}
+            disabled={selectedEmails.length === 0 || loadingEmails}
           >
             Valider & Envoyer ({selectedEmails.length} destinataire(s))
           </button>
@@ -147,6 +257,7 @@ const buildDefaultForm = () => ({
   causesPrincipales: "",
   convention: "",
   planAction: "",
+  casca: "", // Champ CASCA optionnel
 });
 
 // ─── Composant principal ──────────────────────────────────────────────────────
@@ -172,9 +283,10 @@ export default function EntretienDeMesure() {
   const [search, setSearch] = useState("");
   const [filteredFautes, setFilteredFautes] = useState([]);
 
-  // Email modal
-  const [usersList, setUsersList] = useState([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
+  // Email modal - séparer QM et SGL
+  const [qmEmails, setQmEmails] = useState([]);
+  const [sglEmails, setSglEmails] = useState([]);
+  const [loadingEmails, setLoadingEmails] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
 
   // Trois statuts distincts
@@ -194,53 +306,39 @@ export default function EntretienDeMesure() {
     }
   }, []);
 
-  const loadUsers = async () => {
+  // ── Charger les emails QM et SGL par périmètre ──
+  const loadEmailsByPerimeter = async () => {
     try {
-      setLoadingUsers(true);
-      const response = await userService.getAllEmails();
-      console.log("Emails récupérés:", response.data);
-      
-      if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-        const emailList = response.data.map(email => ({
-          email: email,
-          nomUtilisateur: email.split('@')[0] || email,
-          role: "UTILISATEUR"
-        }));
-        setUsersList(emailList);
-      } else {
-        try {
-          const usersResponse = await userService.getAllUsersWithEmails();
-          if (usersResponse.data && Array.isArray(usersResponse.data)) {
-            setUsersList(usersResponse.data);
-          } else {
-            setUsersList([]);
-          }
-        } catch (fallbackErr) {
-          console.error("Fallback erreur:", fallbackErr);
-          setUsersList([]);
-        }
-      }
+      setLoadingEmails(true);
+      const response = await userService.getQMAndSGLEmailsByPerimeter();
+      setQmEmails(response.qmEmails || []);
+      setSglEmails(response.sglEmails || []);
+      console.log("📧 QM emails:", response.qmEmails);
+      console.log("📧 SGL emails:", response.sglEmails);
     } catch (err) {
-      console.error("Erreur chargement emails:", err);
+      console.error("Erreur chargement emails par périmètre:", err);
+      // Fallback
       try {
-        const fallbackResponse = await userService.getAllUsersWithEmails();
-        if (fallbackResponse.data && Array.isArray(fallbackResponse.data)) {
-          setUsersList(fallbackResponse.data);
-        } else {
-          setUsersList([]);
-        }
-      } catch (finalErr) {
-        setUsersList([]);
+        const [qmRes, sglRes] = await Promise.all([
+          userService.getQMEmailsByPerimeter().catch(() => ({ data: [] })),
+          userService.getSGLEmailsByPerimeter().catch(() => ({ data: [] }))
+        ]);
+        setQmEmails(Array.isArray(qmRes.data) ? qmRes.data : []);
+        setSglEmails(Array.isArray(sglRes.data) ? sglRes.data : []);
+      } catch (fallbackErr) {
+        console.error("Fallback error:", fallbackErr);
+        setQmEmails([]);
+        setSglEmails([]);
       }
     } finally {
-      setLoadingUsers(false);
+      setLoadingEmails(false);
     }
   };
 
   useEffect(() => {
     loadData();
     loadFautes();
-    loadUsers();
+    loadEmailsByPerimeter();
   }, [matricule]);
 
   useEffect(() => {
@@ -319,7 +417,6 @@ export default function EntretienDeMesure() {
         setValideSL(dernier.valideSL || false);
         setValideQM(dernier.valideQM || false);
         setValideSGL(dernier.valideSGL || false);
-        console.log("Statuts chargés - valideSL:", dernier.valideSL);
       } else {
         resetForm();
       }
@@ -337,6 +434,7 @@ export default function EntretienDeMesure() {
       causesPrincipales: entretien.causesPrincipales || "",
       convention: entretien.convention || "",
       planAction: entretien.planAction || "",
+      casca: entretien.casca || "",
     });
     if (entretien.typeFaute && !typeOptions.includes(entretien.typeFaute)) {
       setTypeOptions(prev => [...prev, entretien.typeFaute]);
@@ -363,6 +461,18 @@ export default function EntretienDeMesure() {
     }
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Gestion spécifique pour le champ CASCA (numérique)
+  const handleCascaChange = (e) => {
+    if (!canModify && userRole !== "QM_SEGMENT" && userRole !== "SGL") {
+      showErrorAlert("Permission refusée", "Vous n'avez pas les droits.");
+      return;
+    }
+    const value = e.target.value;
+    if (value === "" || value === "-" || /^-?\d*\.?\d*$/.test(value)) {
+      setFormData(prev => ({ ...prev, casca: value }));
+    }
   };
 
   // ── Bouton MODIFIER (SL uniquement) ──
@@ -408,7 +518,6 @@ export default function EntretienDeMesure() {
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
     const entretienDate = new Date(formData.dateEntretien);
     entretienDate.setHours(0, 0, 0, 0);
     
@@ -416,18 +525,16 @@ export default function EntretienDeMesure() {
       showErrorAlert("Date invalide", "La date d'entretien ne peut pas être dans le passé.");
       return false;
     }
-    
     return true;
   };
 
-  // ── Validation SL : création/modification + email (CORRIGÉE) ──
+  // ── Validation SL : création/modification + email ──
   const handleSLValidation = async (destinatairesEmails) => {
     setShowEmailModal(false);
     setSaving(true);
     setError("");
     setStatusMessage("");
 
-    // Vérifications requises
     if (!formData.typeFaute) {
       setError("Le type de faute est obligatoire");
       setSaving(false);
@@ -450,19 +557,16 @@ export default function EntretienDeMesure() {
         causesPrincipales: formData.causesPrincipales || "",
         convention: formData.convention || "",
         planAction: formData.planAction || "",
+        casca: formData.casca ? parseFloat(formData.casca) : null,
         destinatairesEmails: destinatairesEmails,
         expediteurEmail: userEmail || "sl@leoni.com"
       };
 
-      let response;
       if (currentEntretienId) {
-        // Mise à jour existante
-        response = await entretienMesureService.update(matricule, currentEntretienId, entretienData);
-        // Appel à l'API de validation qui déclenche l'envoi d'emails
+        await entretienMesureService.update(matricule, currentEntretienId, entretienData);
         await entretienMesureService.validerPremiere(matricule, currentEntretienId, entretienData);
       } else {
-        // Création
-        response = await entretienMesureService.create(matricule, entretienData);
+        const response = await entretienMesureService.create(matricule, entretienData);
         if (response?.data?.id) {
           await entretienMesureService.validerPremiere(matricule, response.data.id, entretienData);
         }
@@ -470,19 +574,14 @@ export default function EntretienDeMesure() {
 
       const nbDestinataires = destinatairesEmails.length;
       setStatusMessage(`Entretien validé. Email envoyé à ${nbDestinataires} destinataire(s).`);
-      await showSuccessAlert(
-        "Entretien soumis", 
-        `L'entretien de mesure a été créé/validé et un email de convocation a été envoyé à ${nbDestinataires} destinataire(s).`
-      );
+      await showSuccessAlert("Entretien soumis", `L'entretien de mesure a été créé/validé et un email de convocation a été envoyé.`);
       
       localStorage.removeItem(`entretien-mesure-draft-${matricule}`);
       await loadAllEntretiens();
       setTimeout(() => navigate(`/paq-dossier/${matricule}`), 1500);
     } catch (err) {
       console.error("Erreur handleSLValidation:", err);
-      const errorMsg = err.response?.data?.message || err.message || "Erreur lors de l'envoi";
-      setError(errorMsg);
-      showErrorAlert("Enregistrement impossible", errorMsg);
+      showErrorAlert("Enregistrement impossible", err.response?.data?.message || err.message);
     } finally {
       setSaving(false);
     }
@@ -502,6 +601,7 @@ export default function EntretienDeMesure() {
         causesPrincipales: formData.causesPrincipales || "",
         convention: formData.convention || "",
         planAction: formData.planAction || "",
+        casca: formData.casca ? parseFloat(formData.casca) : null,
         expediteurEmail: userEmail || "qm@leoni.com"
       };
 
@@ -509,10 +609,7 @@ export default function EntretienDeMesure() {
 
       setValideQM(true);
       setStatusMessage("Entretien de mesure validé (1ère validation QM-Segment).");
-      await showSuccessAlert(
-        "Validation enregistrée",
-        "La validation QM-Segment a été enregistrée."
-      );
+      await showSuccessAlert("Validation enregistrée", "La validation QM-Segment a été enregistrée.");
 
       localStorage.removeItem(`entretien-mesure-draft-${matricule}`);
       await loadAllEntretiens();
@@ -539,6 +636,7 @@ export default function EntretienDeMesure() {
         causesPrincipales: formData.causesPrincipales || "",
         convention: formData.convention || "",
         planAction: formData.planAction || "",
+        casca: formData.casca ? parseFloat(formData.casca) : null,
         expediteurEmail: userEmail || "sgl@leoni.com"
       };
 
@@ -546,10 +644,7 @@ export default function EntretienDeMesure() {
 
       setValideSGL(true);
       setStatusMessage("Entretien de mesure validé (2ème validation SGL).");
-      await showSuccessAlert(
-        "Validation enregistrée",
-        "La validation SGL a été enregistrée et le PAQ passe au niveau 3."
-      );
+      await showSuccessAlert("Validation enregistrée", "La validation SGL a été enregistrée ");
 
       localStorage.removeItem(`entretien-mesure-draft-${matricule}`);
       await loadAllEntretiens();
@@ -616,15 +711,9 @@ export default function EntretienDeMesure() {
   const canModify = userRole === "SL";
   const isEditable = userRole === "SL";
 
-  // SL peut valider si SGL n'a pas encore validé
   const showValiderSL = userRole === "SL" && !valideSGL;
-
-  // QM peut valider si SL a soumis ET que QM n'a pas encore validé ET SGL pas encore validé
   const showValiderQM = userRole === "QM_SEGMENT" && !!currentEntretienId && valideSL && !valideQM && !valideSGL;
-
-  // SGL peut valider si SL a soumis ET QM a validé ET SGL pas encore validé
   const showValiderSGL = userRole === "SGL" && !!currentEntretienId && valideSL && valideQM && !valideSGL;
-
   const showModifier = canModify && !!currentEntretienId && !valideSGL;
   const showBrouillon = canModify && !valideSGL;
   const showValider = showValiderSL || showValiderQM || showValiderSGL;
@@ -685,6 +774,26 @@ export default function EntretienDeMesure() {
               {collaborator.name || ""} {collaborator.prenom || ""} — {collaborator.matricule || matricule}
             </span>
           )}
+        </div>
+
+        <div className="leoni-header-actions">
+          {/* Champ CASCA dans l'en-tête */}
+          <div className="leoni-casca-field">
+            <label htmlFor="casca" className="leoni-casca-label">
+              CASCA
+            </label>
+            <input
+              type="text"
+              id="casca"
+              name="casca"
+              value={formData.casca}
+              onChange={handleCascaChange}
+              className="leoni-input leoni-input-casca"
+              placeholder="Optionnel"
+              disabled={valideSGL || (!isEditable && userRole !== "QM_SEGMENT" && userRole !== "SGL")}
+              style={{ width: "100px", textAlign: "center" }}
+            />
+          </div>
 
           {/* Badges de statut */}
           {userRole === "SL" && !currentEntretienId && !valideSGL && (
@@ -712,8 +821,6 @@ export default function EntretienDeMesure() {
             <span className="leoni-badge-success">Entretien validé</span>
           )}
         </div>
-
-        <div className="leoni-header-actions" />
       </div>
 
       {statusMessage && <div className="leoni-alert leoni-alert-success">{statusMessage}</div>}
@@ -953,13 +1060,14 @@ export default function EntretienDeMesure() {
         </div>
       </div>
 
-      {/* Modal Email (SL uniquement) */}
+      {/* Modal Email (SL uniquement) avec séparation QM et SGL */}
       <EmailModal
         isOpen={showEmailModal}
         onClose={() => setShowEmailModal(false)}
         onConfirm={handleSLValidation}
-        usersList={usersList}
-        loadingUsers={loadingUsers}
+        qmEmails={qmEmails}
+        sglEmails={sglEmails}
+        loadingEmails={loadingEmails}
       />
 
       {/* Modal Ajout faute */}

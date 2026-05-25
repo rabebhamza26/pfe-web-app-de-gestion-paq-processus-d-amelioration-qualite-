@@ -43,6 +43,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (request.getServletPath().equals("/api/auth/login")
                 || request.getServletPath().equals("/api/auth/refresh-token")
                 || request.getServletPath().equals("/api/auth/forgot-password")
+
+                || request.getServletPath().equals("/api/auth/reset-password")
+                || request.getServletPath().equals("/api/auth/validate-reset-token")
+
+
                 || request.getServletPath().equals("/api/auth/logout")
                 || request.getServletPath().startsWith("/ws")
                 || request.getMethod().equals("OPTIONS")) {

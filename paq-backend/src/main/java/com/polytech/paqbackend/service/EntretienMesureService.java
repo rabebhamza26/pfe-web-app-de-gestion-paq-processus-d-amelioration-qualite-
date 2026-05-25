@@ -76,7 +76,6 @@ public class EntretienMesureService {
         log.info("=== create START ===");
 
         LocalDate dateEntretien = dto.getDateEntretien() != null ? dto.getDateEntretien() : LocalDate.now();
-        validateDates(dateEntretien, dto.getDateRequalification());
 
         Optional<PaqDossier> paqOpt = paqRepository.findFirstByCollaboratorMatriculeAndActifTrueAndArchivedFalse(matricule);
         if (paqOpt.isEmpty()) {
@@ -96,7 +95,7 @@ public class EntretienMesureService {
         e.setConvention(dto.getConvention());
         e.setPlanAction(dto.getPlanAction());
         e.setDateEntretien(dateEntretien);
-        e.setDateRequalification(dto.getDateRequalification());
+        e.setCasca(dto.getCasca());
         e.setDateCreation(LocalDate.now());
         e.setValideSL(false);  // ⚠️ Important: false au départ
         e.setValideQM(false);
@@ -133,14 +132,16 @@ public class EntretienMesureService {
         EntretienMesure existing = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Entretien introuvable: " + id));
 
-        validateDates(dto.getDateEntretien(), dto.getDateRequalification());
 
         existing.setTypeFaute(dto.getTypeFaute());
         existing.setCausesPrincipales(dto.getCausesPrincipales());
         existing.setConvention(dto.getConvention());
         existing.setPlanAction(dto.getPlanAction());
         existing.setDateEntretien(dto.getDateEntretien());
-        existing.setDateRequalification(dto.getDateRequalification());
+        existing.setCasca(dto.getCasca()); // ✅ AJOUT DU CHAMP CASCA
+
+
+
 
         EntretienMesure updated = repo.save(existing);
 
@@ -166,19 +167,22 @@ public class EntretienMesureService {
 
     public EntretienMesure update(Long id, EntretienMesureRequestDTO dto) {
         EntretienMesure e = repo.findById(id).orElseThrow();
-        validateDates(dto.getDateEntretien(), dto.getDateRequalification());
         e.setTypeFaute(dto.getTypeFaute());
         e.setCausesPrincipales(dto.getCausesPrincipales());
         e.setConvention(dto.getConvention());
         e.setPlanAction(dto.getPlanAction());
         e.setDateEntretien(dto.getDateEntretien());
-        e.setDateRequalification(dto.getDateRequalification());
+        e.setCasca(dto.getCasca()); // ✅ AJOUT DU CHAMP CASCA
+
         return repo.save(e);
     }
 
     // ─── VALIDATION SL (avec envoi d'emails aux destinataires sélectionnés) ───────
 // ─── VALIDATION SL ───────────────────────────────────────────────────────────
-    public EntretienMesure validerPremiere(Long id, String matricule, EntretienMesureRequestDTO dto, String expediteurEmail) {
+// ─── VALIDATION SL (avec envoi d'emails aux destinataires sélectionnés) ───────
+    public EntretienMesure validerPremiere(Long id, String matricule,
+                                           EntretienMesureRequestDTO dto,
+                                           String expediteurEmail) {
         log.info("=== validerPremiere START ===");
         log.info("ID: {}, Matricule: {}", id, matricule);
 
@@ -193,7 +197,6 @@ public class EntretienMesureService {
         if (dto.getConvention() != null) existing.setConvention(dto.getConvention());
         if (dto.getPlanAction() != null) existing.setPlanAction(dto.getPlanAction());
         if (dto.getDateEntretien() != null) existing.setDateEntretien(dto.getDateEntretien());
-        if (dto.getDateRequalification() != null) existing.setDateRequalification(dto.getDateRequalification());
 
         // ✅ Marquer comme validé par SL
         existing.setValideSL(true);
@@ -208,13 +211,13 @@ public class EntretienMesureService {
             String historique = addHistorique(paq.getHistorique(),
                     new PaqController.HistoriqueEvent(LocalDate.now(),
                             "VALIDATION SL ENTRETIEN DE MESURE",
-                            String.format("Entretien de mesure validé par SL le %s ", dateFormatted))
+                            String.format("Entretien de mesure validé par SL le %s", dateFormatted))
             );
             paq.setHistorique(historique);
             paqRepository.save(paq);
         }
 
-        // ✅ Envoi des emails aux destinataires sélectionnés
+        // ✅ ENVOI DES EMAILS - RÉCUPÉRER LES DESTINATAIRES DU DTO
         List<String> destinatairesSelectionnes = dto.getDestinatairesEmails();
         log.info("Destinataires sélectionnés: {}", destinatairesSelectionnes);
 
@@ -223,19 +226,22 @@ public class EntretienMesureService {
             for (String email : destinatairesSelectionnes) {
                 if (email != null && !email.isBlank() && email.contains("@")) {
                     try {
+                        // ✅ Appeler la méthode d'envoi d'email
                         envoyerEmailConvocation(expediteurEmail, email.trim(), nomCollab, matricule, dto);
                         envois++;
+                        log.info("Email envoyé avec succès à {}", email);
                     } catch (Exception e) {
-                        log.error("Erreur envoi email à {}: {}", email, e.getMessage());
+                        log.error("Erreur envoi email à {}: {}", email, e.getMessage(), e);
                     }
                 }
             }
-            log.info("Emails envoyés à {} destinataires", envois);
+            log.info("Total emails envoyés: {} sur {}", envois, destinatairesSelectionnes.size());
+        } else {
+            log.warn("Aucun destinataire sélectionné - email non envoyé");
         }
 
         return updated;
     }
-
     // ─── VALIDATION QM_SEGMENT (1ère validation) ─────────────────────────────────
     public EntretienMesure valider1AvecHistorique(Long id, String matricule,
                                                   EntretienMesureRequestDTO dto,
@@ -248,7 +254,7 @@ public class EntretienMesureService {
         if (dto.getConvention() != null) existing.setConvention(dto.getConvention());
         if (dto.getPlanAction() != null) existing.setPlanAction(dto.getPlanAction());
         if (dto.getDateEntretien() != null) existing.setDateEntretien(dto.getDateEntretien());
-        if (dto.getDateRequalification() != null) existing.setDateRequalification(dto.getDateRequalification());
+        if (dto.getCasca() != null) existing.setCasca(dto.getCasca()); // NOUVEAU
 
         existing.setValideQM(true);
         EntretienMesure updated = repo.save(existing);
@@ -286,7 +292,6 @@ public class EntretienMesureService {
         if (dto.getConvention() != null) existing.setConvention(dto.getConvention());
         if (dto.getPlanAction() != null) existing.setPlanAction(dto.getPlanAction());
         if (dto.getDateEntretien() != null) existing.setDateEntretien(dto.getDateEntretien());
-        if (dto.getDateRequalification() != null) existing.setDateRequalification(dto.getDateRequalification());
 
         existing.setValideSGL(true);
         EntretienMesure updated = repo.save(existing);
@@ -361,31 +366,68 @@ public class EntretienMesureService {
         }
     }
 
-    private void validateDates(LocalDate entretien, LocalDate requalification) {
-        if (entretien == null)
-            throw new RuntimeException("Date entretien obligatoire");
-        if (requalification == null)
-            throw new RuntimeException("Date de requalification obligatoire");
-        if (requalification.isBefore(entretien))
-            throw new RuntimeException("La requalification ne peut pas être avant l'entretien");
-        if (requalification.isAfter(entretien.plusDays(7)))
-            throw new RuntimeException("La requalification doit être au plus tard 7 jours après l'entretien");
-    }
+
 
     // ─── EMAILS ─────────────────────────────────────────────────────────────────
     private void envoyerEmailConvocation(String expediteur, String destinataire,
                                          String nomCollab, String matricule,
                                          EntretienMesureRequestDTO dto) {
         try {
-            String sujet = String.format("[PAQ]  Entretien de mesure : %s", nomCollab);
-            String htmlContent = buildEmailConvocationContent(nomCollab, matricule, dto);
+            String sujet = String.format("[PAQ]  Entretien de mesure - %s", nomCollab);
+
+            // Formater la date correctement
+            String dateEntretienStr = dto.getDateEntretien() != null
+                    ? dto.getDateEntretien().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                    : "Non définie";
+
+            String htmlContent = String.format("""
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8"></head>
+        <body style="font-family:Arial,sans-serif;background:#f4f4f4;padding:20px;">
+          <div style="max-width:600px;margin:auto;background:white;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.1)">
+            <div style="background:#C8102E;padding:20px;text-align:center;">
+              <h2 style="color:white;margin:0;"> Entretien de Mesure</h2>
+              <p style="color:#ffcccc;margin:5px 0 0;">PAQ - Leoni</p>
+            </div>
+            <div style="padding:20px;">
+              <p>Bonjour,</p>
+              <p><strong>Merci d'assister à l'entretien de mesure</strong></p>
+              <table style="width:100%%;border-collapse:collapse;margin:20px 0;">
+                <tr style="background:#f8f9fa;">
+                  <td style="padding:10px;border:1px solid #ddd;font-weight:600;width:40%%">Collaborateur</td>
+                  <td style="padding:10px;border:1px solid #ddd;"><strong>%s</strong></td>
+                </tr>
+                <tr>
+                  <td style="padding:10px;border:1px solid #ddd;font-weight:600;">Matricule</td>
+                  <td style="padding:10px;border:1px solid #ddd;"><code>%s</code></td>
+                </tr>
+                <tr style="background:#f8f9fa;">
+                  <td style="padding:10px;border:1px solid #ddd;font-weight:600;">Type de faute</td>
+                  <td style="padding:10px;border:1px solid #ddd;">%s</td>
+                </tr>
+                <tr>
+                  <td style="padding:10px;border:1px solid #ddd;font-weight:600;">Date entretien</td>
+                  <td style="padding:10px;border:1px solid #ddd;">%s</td>
+                </tr>
+              </table>
+            </div>
+            <div style="background:#f8f9fa;padding:10px;text-align:center;font-size:11px;color:#888;">
+              Email automatique - Système PAQ LEONI
+            </div>
+          </div>
+        </body>
+        </html>
+        """, nomCollab, matricule,
+                    dto.getTypeFaute() != null ? dto.getTypeFaute() : "Non spécifié",
+                    dateEntretienStr);
+
             emailService.sendEmail(expediteur, destinataire, sujet, htmlContent);
-            log.info("Email convocation mesure envoyé à {} pour {}", destinataire, matricule);
+            log.info("✅ Email convocation mesure envoyé à {} pour {}", destinataire, matricule);
         } catch (Exception e) {
-            log.error("Erreur envoi email à {}: {}", destinataire, e.getMessage());
+            log.error("❌ Erreur envoi email à {}: {}", destinataire, e.getMessage(), e);
         }
     }
-
     private String buildEmailConvocationContent(String nomCollab, String matricule, EntretienMesureRequestDTO dto) {
         return String.format("""
         <!DOCTYPE html>
@@ -423,7 +465,9 @@ public class EntretienMesureService {
         </html>
         """, nomCollab, matricule,
                 dto.getTypeFaute() != null ? dto.getTypeFaute() : "",
-                dto.getDateEntretien() != null ? dto.getDateEntretien().toString() : "",
-                dto.getDateRequalification() != null ? dto.getDateRequalification().toString() : "");
+                dto.getDateEntretien() != null ? dto.getDateEntretien().toString() : "");
+
+
+
     }
 }
