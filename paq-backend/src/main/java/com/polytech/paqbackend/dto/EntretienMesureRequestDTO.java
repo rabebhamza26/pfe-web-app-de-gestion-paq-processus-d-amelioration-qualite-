@@ -12,9 +12,7 @@ public class EntretienMesureRequestDTO {
     private String destinataireEmail;
     private String message;
     private List<String> destinatairesEmails;
-    private Double casca; // NOUVEAU
-
-    // Getters et Setters existants...
+    private Double ksk; // RENOMMÉ
 
     public String getTypeFaute() { return typeFaute; }
     public void setTypeFaute(String typeFaute) { this.typeFaute = typeFaute; }
@@ -34,18 +32,12 @@ public class EntretienMesureRequestDTO {
     public LocalDate getDateEntretien() { return dateEntretien; }
     public void setDateEntretien(LocalDate dateEntretien) { this.dateEntretien = dateEntretien; }
 
-
     public String getMessage() { return message; }
     public void setMessage(String message) { this.message = message; }
 
     public List<String> getDestinatairesEmails() { return destinatairesEmails; }
     public void setDestinatairesEmails(List<String> destinatairesEmails) { this.destinatairesEmails = destinatairesEmails; }
 
-    public Double getCasca() {
-        return casca;
-    }
-
-    public void setCasca(Double casca) {
-        this.casca = casca;
-    }
+    public Double getKsk() { return ksk; }
+    public void setKsk(Double ksk) { this.ksk = ksk; }
 }

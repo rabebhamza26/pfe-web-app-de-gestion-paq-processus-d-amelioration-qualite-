@@ -18,7 +18,8 @@ const buildDefaultForm = () => ({
   dateEntretien: new Date().toISOString().split("T")[0],
   decision: "",
   commentaireRH: "",
-  casca: "", // Champ CASCA optionnel
+  causePrincipale: "",
+  ksk: "", // Champ KSK optionnel
 });
 
 export default function EntretienFinal({ niveau = 5 }) {
@@ -110,7 +111,8 @@ export default function EntretienFinal({ niveau = 5 }) {
       dateEntretien: entretien.dateEntretien || new Date().toISOString().split("T")[0],
       decision: entretien.decision || "",
       commentaireRH: entretien.commentaireRH || "",
-      casca: entretien.casca || "", // Charger CASCA
+      causePrincipale: entretien.causePrincipale || "",
+      ksk: entretien.ksk ?? entretien.casca ?? "", // Charger KSK (fallback casca)
     });
     
     if (entretien.typeFaute && !typeOptions.includes(entretien.typeFaute)) {
@@ -133,11 +135,11 @@ export default function EntretienFinal({ niveau = 5 }) {
 
   const handleChange = e => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  // Gestion spécifique pour le champ CASCA (numérique)
-  const handleCascaChange = (e) => {
+  // Gestion spécifique pour le champ KSK (numérique)
+  const handleKskChange = (e) => {
     const value = e.target.value;
     if (value === "" || value === "-" || /^-?\d*\.?\d*$/.test(value)) {
-      setFormData({ ...formData, casca: value });
+      setFormData({ ...formData, ksk: value });
     }
   };
 
@@ -243,7 +245,8 @@ export default function EntretienFinal({ niveau = 5 }) {
         dateEntretien: formData.dateEntretien,
         decision: formData.decision,
         commentaireRH: formData.commentaireRH,
-        casca: formData.casca ? parseFloat(formData.casca) : null, // Envoyer CASCA
+        causePrincipale: formData.causePrincipale || "",
+        ksk: formData.ksk ? parseFloat(formData.ksk) : null, // Envoyer KSK
       };
 
       if (currentId) {
@@ -294,17 +297,17 @@ export default function EntretienFinal({ niveau = 5 }) {
             )}
           </div>
           <div className="leoni-header-actions">
-            {/* Champ CASCA dans l'en-tête */}
+            {/* Champ KSK dans l'en-tête */}
             <div className="leoni-casca-field">
-              <label htmlFor="casca" className="leoni-casca-label">
-                CASCA
+              <label htmlFor="ksk" className="leoni-casca-label">
+                KSK
               </label>
               <input
                 type="text"
-                id="casca"
-                name="casca"
-                value={formData.casca}
-                onChange={handleCascaChange}
+                id="ksk"
+                name="ksk"
+                value={formData.ksk}
+                onChange={handleKskChange}
                 className="leoni-input leoni-input-casca"
                 placeholder="Optionnel"
                 style={{ width: "100px", textAlign: "center" }}
@@ -394,7 +397,7 @@ export default function EntretienFinal({ niveau = 5 }) {
                 <form onSubmit={handleSubmit}>
 
                   <div className="ef-fg">
-                    <label className="ef-lbl">Type de faute <span className="req">*</span></label>
+                    <label className="ef-lbl">Type de faute <span className="req"></span></label>
                     <div className="ef-faute-row">
                       <div className="ef-dw">
                         <input type="text" className="ef-inp"
@@ -422,21 +425,28 @@ export default function EntretienFinal({ niveau = 5 }) {
                     </div>
                   </div>
 
-                  <div className="ef-row2">
                     <div className="ef-fg">
-                      <label className="ef-lbl">Date entretien *</label>
+                      <label className="ef-lbl">Date entretien </label>
                       <input type="date" name="dateEntretien" className="ef-inp"
                         value={formData.dateEntretien} onChange={handleChange}/>
                     </div>
+                     <div className="ef-fg">
+                    <label className="ef-lbl">Cause principale</label>
+                    <input type="text" name="causePrincipale" className="ef-inp"
+                      value={formData.causePrincipale} onChange={handleChange}
+                      placeholder="Indiquez la cause principale" />
+                  </div>
+
                     <div className="ef-fg">
-                      <label className="ef-lbl">Décision RH <span className="req">*</span></label>
+                      <label className="ef-lbl">Décision RH <span className="req"></span></label>
                       <select name="decision" className="ef-sel"
                         value={formData.decision} onChange={handleChange}>
                         <option value="">— Choisir —</option>
                         {DECISIONS.map(d => <option key={d} value={d}>{d}</option>)}
                       </select>
                     </div>
-                  </div>
+
+                 
 
                   <div className="ef-fg">
                     <label className="ef-lbl">Commentaire RH</label>

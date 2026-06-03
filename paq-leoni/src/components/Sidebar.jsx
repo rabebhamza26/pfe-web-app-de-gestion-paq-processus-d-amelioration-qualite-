@@ -37,8 +37,9 @@ function Sidebar() {
           </NavLink>
         </li>
 
-        
+         {isSL && (
         <li><NavLink to="/archive">{t("archive")}</NavLink></li>
+        )}
       </ul>
     </aside>
   );

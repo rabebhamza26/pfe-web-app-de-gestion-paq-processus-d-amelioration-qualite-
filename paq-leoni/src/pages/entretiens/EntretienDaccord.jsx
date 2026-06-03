@@ -148,7 +148,7 @@ const buildDefaultForm = () => ({
   dateEntretien: new Date().toISOString().split("T")[0],
   causeFaute: "",
   mesuresProposees: "",
-  casca: "", // Champ CASCA optionnel
+  ksk: "", // Champ KSK optionnel
 });
 
 // ─── Composant principal ──────────────────────────────────────────────────────
@@ -320,7 +320,7 @@ const loadQMEmails = async () => {
       dateEntretien: entretien.date || new Date().toISOString().split("T")[0],
       causeFaute: entretien.causeFaute || "",
       mesuresProposees: entretien.mesuresProposees || "",
-      casca: entretien.casca || "", // Charger CASCA
+      ksk: entretien.ksk || "", // Charger KSK
     });
     if (entretien.typeFaute && !typeOptions.includes(entretien.typeFaute)) {
       setTypeOptions(prev => [...prev, entretien.typeFaute]);
@@ -349,15 +349,15 @@ const loadQMEmails = async () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Gestion spécifique pour le champ CASCA (numérique)
-  const handleCascaChange = (e) => {
+  // Gestion spécifique pour le champ KSK (numérique)
+  const handleKskChange = (e) => {
     if (!canModify && userRole !== "QM_SEGMENT") {
       showErrorAlert("Permission refusée", "Vous n'avez pas les droits.");
       return;
     }
     const value = e.target.value;
     if (value === "" || value === "-" || /^-?\d*\.?\d*$/.test(value)) {
-      setFormData(prev => ({ ...prev, casca: value }));
+      setFormData(prev => ({ ...prev, ksk: value }));
     }
   };
 
@@ -396,47 +396,97 @@ const loadQMEmails = async () => {
   };
 
   // ── Validation SL : création/modification + email QM ──
-  const handleSLValidation = async (destinatairesEmails) => {
-    setShowEmailModal(false);
-    setSaving(true);
-    try {
-      const destinataireEmailString = Array.isArray(destinatairesEmails) 
-        ? destinatairesEmails.join(",") 
-        : destinatairesEmails;
+ // ── Validation SL : création/modification + email QM ──
+// ── Validation SL : création/modification + email QM ──
+// ── Validation SL : création/modification + email QM ──
+const handleSLValidation = async (destinatairesEmails) => {
+  setShowEmailModal(false);
+  setSaving(true);
+  try {
+    const destinataireEmailString = Array.isArray(destinatairesEmails) 
+      ? destinatairesEmails.join(",") 
+      : destinatairesEmails;
 
-      const entretienData = {
+    // Préparer les données pour la création/mise à jour
+    const entretienData = {
+      typeFaute: formData.typeFaute,
+      dateEntretien: formData.dateEntretien,
+      causeFaute: formData.causeFaute,
+      mesuresProposees: formData.mesuresProposees || "",
+      destinataireEmail: destinataireEmailString,
+      ksk: formData.ksk ? parseFloat(formData.ksk) : null,
+    };
+
+    let entretienId = currentEntretienId;
+
+    if (currentEntretienId) {
+      // Étape 1: Mettre à jour l'entretien
+      await entretienDaccordService.update(matricule, currentEntretienId, entretienData);
+      console.log("✅ Entretien mis à jour avec ID:", currentEntretienId);
+      entretienId = currentEntretienId;
+    } else {
+      // Étape 1: Créer l'entretien
+      const response = await entretienDaccordService.create(matricule, entretienData);
+      if (response?.data?.id) {
+        entretienId = response.data.id;
+        console.log("✅ Entretien créé avec ID:", entretienId);
+      }
+    }
+
+    // Étape 2: Valider la première étape (SL) et envoyer les emails
+    if (entretienId) {
+      // Important: Envoyer les emails via l'API de validation
+      // Le backend devrait envoyer les emails automatiquement
+      const validationData = {
+        valide: true,
+        destinataireEmail: destinataireEmailString, // Inclure les emails
         typeFaute: formData.typeFaute,
-        date: formData.dateEntretien,
+        dateEntretien: formData.dateEntretien,
         causeFaute: formData.causeFaute,
         mesuresProposees: formData.mesuresProposees || "",
-        destinataireEmail: destinataireEmailString,
-        casca: formData.casca ? parseFloat(formData.casca) : null, // Envoyer CASCA
+        collaborateurNom: collaborator?.name,
+        collaborateurPrenom: collaborator?.prenom,
+        collaborateurMatricule: matricule
       };
-
-      if (currentEntretienId) {
-        await entretienDaccordService.update(matricule, currentEntretienId, entretienData);
-        await entretienDaccordService.validerPremiere(matricule, currentEntretienId, entretienData);
-      } else {
-        const response = await entretienDaccordService.create(matricule, entretienData);
-        if (response?.data?.id) {
-          await entretienDaccordService.validerPremiere(matricule, response.data.id, entretienData);
-        }
-      }
-
-      const nbDestinataires = Array.isArray(destinatairesEmails) ? destinatairesEmails.length : 1;
-      setStatusMessage(`Entretien validé. Email de convocation envoyé à ${nbDestinataires} destinataire(s).`);
-      await showSuccessAlert("Entretien soumis", `L'email de convocation a été envoyé à ${nbDestinataires} destinataire(s).`);
-      localStorage.removeItem(`entretien-daccord-draft-${matricule}`);
-      await loadAllEntretiens();
-      setTimeout(() => navigate(`/paq-dossier/${matricule}`), 1500);
-    } catch (err) {
-      console.error(err);
-      showErrorAlert("Enregistrement impossible", err.response?.data?.message || err.message);
-    } finally {
-      setSaving(false);
+      
+      console.log("📤 Envoi validation avec emails:", validationData);
+      
+      await entretienDaccordService.validerPremiere(matricule, entretienId, validationData);
+      console.log("✅ Validation SL effectuée et emails envoyés");
     }
-  };
 
+    const nbDestinataires = Array.isArray(destinatairesEmails) ? destinatairesEmails.length : 1;
+    setStatusMessage(`Entretien validé. Email de convocation envoyé à ${nbDestinataires} destinataire(s).`);
+    
+    // Afficher un message avec plus de détails
+    await showSuccessAlert(
+      "Entretien soumis", 
+      "L'email de convocation a été envoyé aux QM-Segment sélectionnés."
+     
+    );
+    
+    localStorage.removeItem(`entretien-daccord-draft-${matricule}`);
+    await loadAllEntretiens();
+    setTimeout(() => navigate(`/paq-dossier/${matricule}`), 1500);
+    
+  } catch (err) {
+    console.error("❌ Erreur handleSLValidation:", err);
+    console.error("📄 Détails de l'erreur:", {
+      status: err.response?.status,
+      statusText: err.response?.statusText,
+      data: err.response?.data,
+    });
+    
+    // Afficher un message d'erreur plus précis
+    let errorMessage = err.response?.data?.message || err.message;
+    
+   
+    
+    showErrorAlert("Enregistrement impossible", errorMessage);
+  } finally {
+    setSaving(false);
+  }
+};
   // ── Validation QM_SEGMENT : sans email, enregistrement PAQ ──
   const handleValidationQM = async () => {
     setSaving(true);
@@ -446,7 +496,7 @@ const loadQMEmails = async () => {
         date: formData.dateEntretien,
         causeFaute: formData.causeFaute,
         mesuresProposees: formData.mesuresProposees || "",
-        casca: formData.casca ? parseFloat(formData.casca) : null, // Envoyer CASCA
+        ksk: formData.ksk ? parseFloat(formData.ksk) : null, // Envoyer KSK
       };
 
       await entretienDaccordService.validerFinale(matricule, currentEntretienId, entretienData);
@@ -576,17 +626,17 @@ const loadQMEmails = async () => {
         </div>
 
         <div className="leoni-header-actions">
-          {/* Champ CASCA dans l'en-tête */}
+          {/* Champ KSK dans l'en-tête */}
           <div className="leoni-casca-field">
-            <label htmlFor="casca" className="leoni-casca-label">
-              CASCA
+            <label htmlFor="ksk" className="leoni-casca-label">
+              KSK
             </label>
             <input
               type="text"
-              id="casca"
-              name="casca"
-              value={formData.casca}
-              onChange={handleCascaChange}
+              id="ksk"
+              name="ksk"
+              value={formData.ksk}
+              onChange={handleKskChange}
               className="leoni-input leoni-input-casca"
               placeholder="Optionnel"
               disabled={valideQM || (!isEditable && userRole !== "QM_SEGMENT")}

@@ -4,6 +4,7 @@ import com.polytech.paqbackend.entity.User;
 import com.polytech.paqbackend.repository.UserRepository;
 import com.polytech.paqbackend.service.NotificationService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,35 +25,34 @@ public class NotificationController {
         this.userRepository = userRepository;
     }
 
-    // =========================================================
-    // Résout toujours le login canonique du user connecté,
-    // que authentication.getName() retourne un email ou un login.
-    // C'est la clé utilisée pour stocker ET chercher les notifs.
-    // =========================================================
     private String resolveLogin(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) return null;
 
         String principal = authentication.getName();
         if (principal == null || principal.isEmpty() || "anonymousUser".equals(principal)) return null;
 
-        // findByEmailOrLogin cherche dans les deux colonnes en une requête
         User user = userRepository.findByEmailOrLogin(principal);
         if (user != null && user.getLogin() != null) {
             return user.getLogin();
         }
 
-        // Fallback : utiliser le principal tel quel
         return principal;
     }
 
+    // TEMPORAIRE : Utiliser permitAll() au lieu de isAuthenticated()
     @GetMapping
+    @PreAuthorize("permitAll()")  // Changé de isAuthenticated() à permitAll()
     public ResponseEntity<List<Map<String, Object>>> getNotifications(Authentication authentication) {
         String login = resolveLogin(authentication);
-        if (login == null) return ResponseEntity.ok(List.of());
+        if (login == null) {
+            // Retourner une liste vide au lieu d'erreur 403
+            return ResponseEntity.ok(List.of());
+        }
         return ResponseEntity.ok(notificationService.getNotificationsByLogin(login));
     }
 
     @GetMapping("/unread")
+    @PreAuthorize("permitAll()")  // Changé
     public ResponseEntity<List<Map<String, Object>>> getUnreadNotifications(Authentication authentication) {
         String login = resolveLogin(authentication);
         if (login == null) return ResponseEntity.ok(List.of());
@@ -60,6 +60,7 @@ public class NotificationController {
     }
 
     @GetMapping("/count/unread")
+    @PreAuthorize("permitAll()")  // Changé
     public ResponseEntity<Map<String, Long>> countUnread(Authentication authentication) {
         String login = resolveLogin(authentication);
         long count = login != null ? notificationService.countUnreadByLogin(login) : 0L;
@@ -69,6 +70,7 @@ public class NotificationController {
     }
 
     @PostMapping("/{id}/read")
+    @PreAuthorize("permitAll()")  // Changé
     public ResponseEntity<Void> markAsRead(@PathVariable Long id, Authentication authentication) {
         String login = resolveLogin(authentication);
         if (login == null) return ResponseEntity.status(401).build();
@@ -77,6 +79,7 @@ public class NotificationController {
     }
 
     @PostMapping("/mark-all-read")
+    @PreAuthorize("permitAll()")  // Changé
     public ResponseEntity<Map<String, Integer>> markAllAsRead(Authentication authentication) {
         String login = resolveLogin(authentication);
         if (login == null) return ResponseEntity.ok(Map.of("marquees", 0));

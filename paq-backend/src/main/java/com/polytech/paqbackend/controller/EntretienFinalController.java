@@ -37,13 +37,6 @@ public class EntretienFinalController {
         return ResponseEntity.ok(service.updateAvecNotification(id, matricule, dto, authentication.getName()));
     }
 
-    // RH peut supprimer
-    @DeleteMapping("/{matricule}/{id}")
-    @PreAuthorize("hasAuthority('final:delete') and hasRole('RH')")
-    public ResponseEntity<?> delete(@PathVariable String matricule, @PathVariable Long id, @RequestBody(required = false) Map<String, String> body, Authentication authentication) {
-        service.deleteAvecNotification(id, matricule, authentication.getName(), body != null ? body.get("destinataireEmail") : null, matricule);
-        return ResponseEntity.noContent().build();
-    }
 
     // RH peut valider
     @PostMapping("/{matricule}/{id}/valider")

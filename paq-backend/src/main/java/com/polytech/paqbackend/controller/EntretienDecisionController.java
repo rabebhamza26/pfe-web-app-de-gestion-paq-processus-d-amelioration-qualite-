@@ -40,14 +40,7 @@ public class EntretienDecisionController {
         return ResponseEntity.ok(service.updateAvecNotification(id, matricule, dto, authentication.getName()));
     }
 
-    // SL peut supprimer
-    @DeleteMapping("/{matricule}/{id}")
-    @PreAuthorize("hasRole('SL')")
-    public ResponseEntity<Void> delete(@PathVariable String matricule, @PathVariable Long id, @RequestBody(required = false) Map<String, String> body, Authentication authentication) {
-        log.info("DELETE - Matricule: {}, ID: {}, User: {}", matricule, id, authentication.getName());
-        service.deleteAvecNotification(id, matricule, authentication.getName(), body != null ? body.get("destinataireEmail") : null, matricule);
-        return ResponseEntity.noContent().build();
-    }
+
 
     // ✅ SL valide (envoi email à 2 obligatoires + 1 optionnel)
     @PostMapping("/{matricule}/{id}/valider-sl")

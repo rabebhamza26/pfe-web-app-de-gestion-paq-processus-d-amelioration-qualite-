@@ -16,12 +16,15 @@ export default function EditCollaborator() {
         segment: "",
         hireDate: "",
     });
-    const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
-    const [loading, setLoading] = useState(true);
-    const [submitting, setSubmitting] = useState(false);
-    const [segments, setSegments] = useState([]);
-    const [segmentsLoading, setSegmentsLoading] = useState(true);
+
+  const [segments, setSegments] = useState([]);
+const [allSegments, setAllSegments] = useState([]);
+
+const [error, setError] = useState("");
+const [success, setSuccess] = useState("");
+const [loading, setLoading] = useState(true);
+const [submitting, setSubmitting] = useState(false);
+const [segmentsLoading, setSegmentsLoading] = useState(true);
     const navigate = useNavigate();
 
     const getSegmentLabel = (segment) =>
@@ -39,38 +42,57 @@ export default function EditCollaborator() {
         loadCollaborator();
     }, [matricule]);
 
-    useEffect(() => {
-        const loadSegments = async () => {
-            try {
-                setSegmentsLoading(true);
-                
-                let res;
-                if (selectedPlant && selectedPlant.id) {
-                    // Filtrer par plant
-                    res = await getSegmentsByPlant(selectedPlant.id);
-                } else if (selectedSite && selectedSite.id) {
-                    // Filtrer par site uniquement
-                    res = await getSegmentsBySite(selectedSite.id);
-                } else {
-                    // Fallback - tous les segments
-                    res = await getSegments();
-                }
-                
-                const list = Array.isArray(res.data) ? res.data : [];
-                const sorted = [...list].sort((a, b) =>
-                    getSegmentLabel(a).localeCompare(getSegmentLabel(b), "fr", { sensitivity: "base" })
-                );
-                setSegments(sorted);
-            } catch (err) {
-                console.error("Erreur chargement segments:", err);
-                setSegments([]);
-            } finally {
-                setSegmentsLoading(false);
-            }
-        };
-        
-        loadSegments();
-    }, [selectedSite, selectedPlant]);
+   useEffect(() => {
+    const loadAllSegments = async () => {
+        try {
+            setSegmentsLoading(true);
+
+            const res = await getSegments();
+            const list = Array.isArray(res.data) ? res.data : [];
+
+            setAllSegments(list);
+        } catch (err) {
+            console.error("Erreur chargement segments:", err);
+            setAllSegments([]);
+        } finally {
+            setSegmentsLoading(false);
+        }
+    };
+
+    loadAllSegments();
+}, []);
+
+useEffect(() => {
+    if (allSegments.length === 0) return;
+
+    let filteredSegments = [...allSegments];
+
+    if (selectedPlant?.id) {
+        filteredSegments = allSegments.filter(
+            seg =>
+                seg.plantId === selectedPlant.id ||
+                seg.plant?.id === selectedPlant.id ||
+                seg.plant_id === selectedPlant.id
+        );
+    } else if (selectedSite?.id) {
+        filteredSegments = allSegments.filter(
+            seg =>
+                seg.siteId === selectedSite.id ||
+                seg.site?.id === selectedSite.id ||
+                seg.site_id === selectedSite.id
+        );
+    }
+
+    const sorted = [...filteredSegments].sort((a, b) =>
+        getSegmentLabel(a).localeCompare(
+            getSegmentLabel(b),
+            "fr",
+            { sensitivity: "base" }
+        )
+    );
+
+    setSegments(sorted);
+}, [selectedSite, selectedPlant, allSegments]);
 
     /**
      * Récupère les informations du collaborateur à modifier
@@ -78,14 +100,25 @@ export default function EditCollaborator() {
     const loadCollaborator = async () => {
         try {
             setLoading(true);
+
             const response = await collaboratorService.getById(matricule);
-            const data = response.data;
+const data = response.data;
+
+console.log("Collaborateur :", data);
+console.log("Segment reçu :", data.segment);
             
             setFormData({
                 matricule: data.matricule,
                 name: data.name || "",
                 prenom: data.prenom || "",
-                segment: data.segment || "",
+                segment:
+    data.segment?.nomSegment ||
+    data.segment?.name ||
+    data.segment?.code ||
+    data.segment?.segment ||
+    data.segment?.libelle ||
+    data.segment ||
+    "",
                 hireDate: data.hireDate ? data.hireDate.slice(0, 10) : "",
             });
         } catch (err) {
@@ -208,7 +241,7 @@ export default function EditCollaborator() {
 
                         <div className="form-group mb-3 collab-field">
                             <label htmlFor="name" className="form-label">
-                                Nom <span className="text-danger">*</span>
+                                Nom <span className="text-danger"></span>
                             </label>
                             <input
                                 type="text"
@@ -223,7 +256,7 @@ export default function EditCollaborator() {
 
                         <div className="form-group mb-3 collab-field">
                             <label htmlFor="prenom" className="form-label">
-                                Prénom <span className="text-danger">*</span>
+                                Prénom <span className="text-danger"></span>
                             </label>
                             <input
                                 type="text"
@@ -238,7 +271,7 @@ export default function EditCollaborator() {
 
                         <div className="form-group mb-3 collab-field">
                             <label htmlFor="segment" className="form-label">
-                                Segment <span className="text-danger">*</span>
+                                Segment <span className="text-danger"></span>
                             </label>
                             <select
                                 id="segment"
@@ -265,7 +298,7 @@ export default function EditCollaborator() {
 
                         <div className="form-group mb-4 collab-field collab-field-full">
                             <label htmlFor="hireDate" className="form-label">
-                                Date d'embauche <span className="text-danger">*</span>
+                                Date d'embauche <span className="text-danger"></span>
                             </label>
                             <input
                                 type="date"

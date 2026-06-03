@@ -69,15 +69,11 @@ export default function CollaboratorManagement() {
   };
 
   // ── Chargement des collaborateurs ─────────────────────────
-  // On passe siteId / plantId au service pour que le backend
-  // filtre correctement selon la sélection courante ET le
-  // périmètre du user connecté.
   const loadCollaborators = async () => {
     try {
       setLoading(true);
       setError("");
 
-      // Paramètres de filtre envoyés au backend
       const filterParams = {
         siteId: selectedSite?.id || null,
         plantId: selectedPlant?.id || null,
@@ -127,6 +123,11 @@ export default function CollaboratorManagement() {
   };
 
   const hasActivePaq = (collab) => {
+    // Utiliser le champ hasActivePaq du backend s'il existe
+    if (collab.hasActivePaq !== undefined) {
+      return collab.hasActivePaq === true;
+    }
+    // Fallback: vérifier par le statut
     const s = (collab.statut || "").toUpperCase();
     return s !== "POSITIF" && s !== "N/A" && collab.niveau !== undefined && collab.niveau !== null;
   };
@@ -134,17 +135,6 @@ export default function CollaboratorManagement() {
   const formatDate = (d) => {
     if (!d) return "N/A";
     try { return new Date(d).toLocaleDateString("fr-FR"); } catch { return d; }
-  };
-
-  const getStatusBadgeClass = (statut, niveau) => {
-    const s = (statut || "").toUpperCase();
-    if (s === "ARCHIVE") return "badge-soft-dark";
-    if (s === "POSITIF") return "badge-soft-success";
-    if (s === "CLOTURE") return "badge-soft-info";
-    if (niveau === 1)    return "badge-soft-info";
-    if (niveau === 2)    return "badge-soft-warning";
-    if (niveau >= 3)     return "badge-soft-danger";
-    return "badge-soft-secondary";
   };
 
   const filteredCollaborators = useMemo(() => {
@@ -156,29 +146,52 @@ export default function CollaboratorManagement() {
       if (!s) return true;
       return (
         (c.matricule && c.matricule.toLowerCase().includes(s)) ||
-        (c.nom       && c.nom.toLowerCase().includes(s))       ||
-        (c.prenom    && c.prenom.toLowerCase().includes(s))    ||
-        (c.segment   && c.segment.toLowerCase().includes(s))
+        (c.nom && c.nom.toLowerCase().includes(s)) ||
+        (c.prenom && c.prenom.toLowerCase().includes(s)) ||
+        (c.segment && c.segment.toLowerCase().includes(s))
       );
     });
 
     return sortCollaborators(filtered, latestMatricule, sortMode);
   }, [collaborators, search, sortMode, location.state]);
 
-  // ── Label pour le contexte affiché ────────────────────────
   const contextLabel = selectedPlant
     ? `Plant : ${selectedPlant.name || selectedPlant.id}`
     : selectedSite
     ? `Site : ${selectedSite.name || selectedSite.id}`
     : "Tous les sites / plants";
 
+  const getNiveauLabel = (collab) => {
+    const niveau = collab?.niveau ?? 0;
+    switch (niveau) {
+      case 0: return "N0";
+      case 1: return "N1";
+      case 2: return "N2";
+      case 3: return "N3";
+      case 4: return "N4";
+      case 5: return "N5";
+      default: return "N0";
+    }
+  };
+
+  const getNiveauClass = (collab) => {
+    const niveau = collab?.niveau ?? 0;
+    switch (niveau) {
+      case 0: return "niveau-badge n0";
+      case 1: return "niveau-badge n1";
+      case 2: return "niveau-badge n2";
+      case 3: return "niveau-badge n3";
+      case 4: return "niveau-badge n4";
+      case 5: return "niveau-badge n5";
+      default: return "niveau-badge n0";
+    }
+  };
+
   return (
     <div className="container py-4 collab-page">
-
       <div className="collab-topbar">
         <div>
           <div className="collab-title">Gestion Collaborateurs</div>
-          {/* Affiche le périmètre actif pour que l'utilisateur sache ce qu'il voit */}
           <small className="text-muted">
             <i className="fas fa-filter me-1"></i>{contextLabel}
           </small>
@@ -252,7 +265,6 @@ export default function CollaboratorManagement() {
                 <th>SEGMENT</th>
                 <th>DATE EMBAUCHE</th>
                 <th>NIVEAU PAQ</th>
-                <th>STATUT</th>
                 <th>ACTIONS</th>
               </tr>
             </thead>
@@ -261,8 +273,9 @@ export default function CollaboratorManagement() {
                 const sixMonthsPassed = hasSixMonthsPassed(c);
                 const hasPaq = hasActivePaq(c);
 
+                // CORRECTION : Utiliser 'c' au lieu de 'collab'
                 let paqButton = null;
-                if (hasPaq) {
+                if (hasActivePaq(c)) {
                   paqButton = (
                     <button
                       className="action-btn btn-view"
@@ -272,7 +285,7 @@ export default function CollaboratorManagement() {
                       Voir PAQ
                     </button>
                   );
-                } else if (sixMonthsPassed) {
+                } else if (c.peutCreerPaq === true) {
                   paqButton = (
                     <button
                       className="action-btn btn-paq"
@@ -287,7 +300,7 @@ export default function CollaboratorManagement() {
                     <button
                       className="action-btn btn-paq-disabled"
                       disabled
-                      title={`PAQ disponible après 6 mois d'ancienneté (${formatDate(c.hireDate)})`}
+                      title={c.prochainPaqDate ? `Nouveau PAQ disponible à partir du ${new Date(c.prochainPaqDate).toLocaleDateString('fr-FR')}` : "PAQ non disponible"}
                     >
                       Créer PAQ
                     </button>
@@ -301,19 +314,8 @@ export default function CollaboratorManagement() {
                     <td className="segment-cell">{c.segment}</td>
                     <td className="date-cell">{formatDate(c.hireDate)}</td>
                     <td className="niveau-cell">
-                      <div className="niveau-stack">
-                        {[0,1,2,3,4,5].map(n => (
-                          <span key={n}
-                            className={`niveau-pill n${n} ${c.niveau === n ? "active" : ""}`}
-                            title={`Niveau ${n}`}
-                          >N{n}</span>
-                        ))}
-                      </div>
-                    </td>
-                   
-                    <td className="statut-cell">
-                      <span className={`badge-custom ${getStatusBadgeClass(c.statut, c.niveau)}`}>
-                        {c.statut || "N/A"}
+                      <span className={getNiveauClass(c)}>
+                        {getNiveauLabel(c)}
                       </span>
                     </td>
                     <td className="actions-cell">

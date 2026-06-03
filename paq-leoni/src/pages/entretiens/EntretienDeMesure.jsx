@@ -257,7 +257,7 @@ const buildDefaultForm = () => ({
   causesPrincipales: "",
   convention: "",
   planAction: "",
-  casca: "", // Champ CASCA optionnel
+  ksk: "", // Champ KSK optionnel
 });
 
 // ─── Composant principal ──────────────────────────────────────────────────────
@@ -434,7 +434,7 @@ export default function EntretienDeMesure() {
       causesPrincipales: entretien.causesPrincipales || "",
       convention: entretien.convention || "",
       planAction: entretien.planAction || "",
-      casca: entretien.casca || "",
+      ksk: entretien.ksk || "",
     });
     if (entretien.typeFaute && !typeOptions.includes(entretien.typeFaute)) {
       setTypeOptions(prev => [...prev, entretien.typeFaute]);
@@ -463,15 +463,15 @@ export default function EntretienDeMesure() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Gestion spécifique pour le champ CASCA (numérique)
-  const handleCascaChange = (e) => {
+  // Gestion spécifique pour le champ KSK (numérique)
+  const handleKskChange = (e) => {
     if (!canModify && userRole !== "QM_SEGMENT" && userRole !== "SGL") {
       showErrorAlert("Permission refusée", "Vous n'avez pas les droits.");
       return;
     }
     const value = e.target.value;
     if (value === "" || value === "-" || /^-?\d*\.?\d*$/.test(value)) {
-      setFormData(prev => ({ ...prev, casca: value }));
+      setFormData(prev => ({ ...prev, ksk: value }));
     }
   };
 
@@ -557,7 +557,7 @@ export default function EntretienDeMesure() {
         causesPrincipales: formData.causesPrincipales || "",
         convention: formData.convention || "",
         planAction: formData.planAction || "",
-        casca: formData.casca ? parseFloat(formData.casca) : null,
+        ksk: formData.ksk ? parseFloat(formData.ksk) : null,
         destinatairesEmails: destinatairesEmails,
         expediteurEmail: userEmail || "sl@leoni.com"
       };
@@ -601,7 +601,7 @@ export default function EntretienDeMesure() {
         causesPrincipales: formData.causesPrincipales || "",
         convention: formData.convention || "",
         planAction: formData.planAction || "",
-        casca: formData.casca ? parseFloat(formData.casca) : null,
+        ksk: formData.ksk ? parseFloat(formData.ksk) : null,
         expediteurEmail: userEmail || "qm@leoni.com"
       };
 
@@ -636,7 +636,7 @@ export default function EntretienDeMesure() {
         causesPrincipales: formData.causesPrincipales || "",
         convention: formData.convention || "",
         planAction: formData.planAction || "",
-        casca: formData.casca ? parseFloat(formData.casca) : null,
+        ksk: formData.ksk ? parseFloat(formData.ksk) : null,
         expediteurEmail: userEmail || "sgl@leoni.com"
       };
 
@@ -777,17 +777,17 @@ export default function EntretienDeMesure() {
         </div>
 
         <div className="leoni-header-actions">
-          {/* Champ CASCA dans l'en-tête */}
+          {/* Champ KSK dans l'en-tête */}
           <div className="leoni-casca-field">
-            <label htmlFor="casca" className="leoni-casca-label">
-              CASCA
+            <label htmlFor="ksk" className="leoni-casca-label">
+              KSK
             </label>
             <input
               type="text"
-              id="casca"
-              name="casca"
-              value={formData.casca}
-              onChange={handleCascaChange}
+              id="ksk"
+              name="ksk"
+              value={formData.ksk}
+              onChange={handleKskChange}
               className="leoni-input leoni-input-casca"
               placeholder="Optionnel"
               disabled={valideSGL || (!isEditable && userRole !== "QM_SEGMENT" && userRole !== "SGL")}

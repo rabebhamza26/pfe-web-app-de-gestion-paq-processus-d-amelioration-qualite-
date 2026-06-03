@@ -95,7 +95,7 @@ public class EntretienMesureService {
         e.setConvention(dto.getConvention());
         e.setPlanAction(dto.getPlanAction());
         e.setDateEntretien(dateEntretien);
-        e.setCasca(dto.getCasca());
+        e.setKsk(dto.getKsk());
         e.setDateCreation(LocalDate.now());
         e.setValideSL(false);  // ⚠️ Important: false au départ
         e.setValideQM(false);
@@ -138,7 +138,7 @@ public class EntretienMesureService {
         existing.setConvention(dto.getConvention());
         existing.setPlanAction(dto.getPlanAction());
         existing.setDateEntretien(dto.getDateEntretien());
-        existing.setCasca(dto.getCasca()); // ✅ AJOUT DU CHAMP CASCA
+        existing.setKsk(dto.getKsk()); // ✅ AJOUT DU CHAMP CASCA
 
 
 
@@ -172,7 +172,7 @@ public class EntretienMesureService {
         e.setConvention(dto.getConvention());
         e.setPlanAction(dto.getPlanAction());
         e.setDateEntretien(dto.getDateEntretien());
-        e.setCasca(dto.getCasca()); // ✅ AJOUT DU CHAMP CASCA
+        e.setKsk(dto.getKsk()); // ✅ AJOUT DU CHAMP CASCA
 
         return repo.save(e);
     }
@@ -254,7 +254,7 @@ public class EntretienMesureService {
         if (dto.getConvention() != null) existing.setConvention(dto.getConvention());
         if (dto.getPlanAction() != null) existing.setPlanAction(dto.getPlanAction());
         if (dto.getDateEntretien() != null) existing.setDateEntretien(dto.getDateEntretien());
-        if (dto.getCasca() != null) existing.setCasca(dto.getCasca()); // NOUVEAU
+        if (dto.getKsk() != null) existing.setKsk(dto.getKsk()); // NOUVEAU
 
         existing.setValideQM(true);
         EntretienMesure updated = repo.save(existing);

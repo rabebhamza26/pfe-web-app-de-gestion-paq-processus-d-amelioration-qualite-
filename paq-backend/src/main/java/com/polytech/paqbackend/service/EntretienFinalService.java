@@ -106,34 +106,6 @@ public class EntretienFinalService {
         return updated;
     }
 
-    public void deleteAvecNotification(Long id, String matricule, String expediteurEmail, String destinataireEmail, String nomCollab) {
-        EntretienFinal entretien = entretienFinalRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Entretien introuvable: " + id));
-
-        entretienFinalRepository.deleteById(id);
-
-        Optional<PaqDossier> paqOpt = paqRepository.findFirstByCollaboratorMatriculeAndActifTrueAndArchivedFalse(matricule);
-        if (paqOpt.isPresent()) {
-            PaqDossier paq = paqOpt.get();
-
-            String historique = addHistorique(
-                    paq.getHistorique(),
-                    new PaqController.HistoriqueEvent(
-                            LocalDate.now(),
-                            " SUPPRESSION ENTRETIEN FINAL",
-                            String.format("Entretien final supprimé le %s", LocalDate.now())
-                    )
-            );
-            paq.setHistorique(historique);
-            paqRepository.save(paq);
-        }
-
-        if (destinataireEmail != null && !destinataireEmail.isBlank()) {
-            envoyerEmailSuppression(expediteurEmail, destinataireEmail, nomCollab, matricule);
-        }
-
-        log.info("Entretien final {} supprimé pour {}", id, matricule);
-    }
 
     public EntretienFinal create(String matricule, EntretienFinalDTO dto, String expediteurEmail) {
         PaqDossier dossier = paqRepository
@@ -150,9 +122,11 @@ public class EntretienFinalService {
         entretien.setDecision(dto.getDecision());
         entretien.setDateEntretien(dto.getDateEntretien() != null ? dto.getDateEntretien() : LocalDate.now());
         entretien.setTypeFaute(dto.getTypeFaute());
+        entretien.setCausePrincipale(dto.getCausePrincipale());
+
         entretien.setCommentaireRH(dto.getCommentaireRH());
 
-        entretien.setCasca(dto.getCasca()); // NOUVEAU
+        entretien.setKsk(dto.getKsk()); // NOUVEAU
 
 
         EntretienFinal saved = entretienFinalRepository.save(entretien);
@@ -188,7 +162,9 @@ public class EntretienFinalService {
         existing.setDateEntretien(dto.getDateEntretien());
         existing.setTypeFaute(dto.getTypeFaute());
         existing.setCommentaireRH(dto.getCommentaireRH());
-        existing.setCasca(dto.getCasca()); // NOUVEAU
+        existing.setCausePrincipale(dto.getCausePrincipale());
+
+        existing.setKsk(dto.getKsk()); // NOUVEAU
 
 
         EntretienFinal updated = entretienFinalRepository.save(existing);

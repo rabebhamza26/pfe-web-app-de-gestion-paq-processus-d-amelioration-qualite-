@@ -194,13 +194,14 @@ public class EntretienDecisionService {
         entretien.setMatricule(matricule);
         entretien.setTypeFaute(dto.getTypeFaute());
         entretien.setDateEntretien(dto.getDateEntretien() != null ? dto.getDateEntretien() : LocalDate.now());
+       entretien.setCausePrincipale(dto.getCausePrincipale());
         entretien.setDecision(dto.getDecision());
         entretien.setJustification(dto.getJustification());
         entretien.setDateCreation(LocalDate.now());
         entretien.setValideSL(false);
         entretien.setValideHPSGL(false);
         entretien.setValideQMPlant(false);
-        entretien.setCasca(dto.getCasca());
+        entretien.setKsk(dto.getKsk());
 
 
         EntretienDecision saved = repo.save(entretien);
@@ -245,6 +246,7 @@ public class EntretienDecisionService {
         if (dto.getTypeFaute() != null) existing.setTypeFaute(dto.getTypeFaute());
         if (dto.getDateEntretien() != null) existing.setDateEntretien(dto.getDateEntretien());
         if (dto.getDecision() != null) existing.setDecision(dto.getDecision());
+        if (dto.getCausePrincipale() != null)existing.setCausePrincipale(dto.getCausePrincipale());
         if (dto.getJustification() != null) existing.setJustification(dto.getJustification());
 
         EntretienDecision updated = repo.save(existing);
@@ -281,6 +283,8 @@ public class EntretienDecisionService {
         if (dto.getTypeFaute() != null) existing.setTypeFaute(dto.getTypeFaute());
         if (dto.getDateEntretien() != null) existing.setDateEntretien(dto.getDateEntretien());
         if (dto.getDecision() != null) existing.setDecision(dto.getDecision());
+        if (dto.getCausePrincipale() != null)existing.setCausePrincipale(dto.getCausePrincipale());
+
         if (dto.getJustification() != null) existing.setJustification(dto.getJustification());
 
         existing.setValideSL(true);
@@ -324,6 +328,8 @@ public class EntretienDecisionService {
         if (dto.getDateEntretien() != null) existing.setDateEntretien(dto.getDateEntretien());
         if (dto.getDecision() != null) existing.setDecision(dto.getDecision());
         if (dto.getJustification() != null) existing.setJustification(dto.getJustification());
+        if (dto.getCausePrincipale() != null)existing.setCausePrincipale(dto.getCausePrincipale());
+
 
         existing.setValideHPSGL(true);
         EntretienDecision updated = repo.save(existing);
@@ -358,6 +364,7 @@ public class EntretienDecisionService {
         if (dto.getTypeFaute() != null) existing.setTypeFaute(dto.getTypeFaute());
         if (dto.getDateEntretien() != null) existing.setDateEntretien(dto.getDateEntretien());
         if (dto.getDecision() != null) existing.setDecision(dto.getDecision());
+        if (dto.getCausePrincipale() != null)existing.setCausePrincipale(dto.getCausePrincipale());
         if (dto.getJustification() != null) existing.setJustification(dto.getJustification());
 
         existing.setValideQMPlant(true);
@@ -388,10 +395,7 @@ public class EntretienDecisionService {
         return updated;
     }
 
-    public void deleteAvecNotification(Long id, String matricule, String expediteurEmail, String destinataireEmail, String nomCollab) {
-        repo.deleteById(id);
-        log.info("Entretien de décision {} supprimé", id);
-    }
+
 
     public List<EntretienDecision> findByMatricule(String matricule) {
         return repo.findByMatricule(matricule);

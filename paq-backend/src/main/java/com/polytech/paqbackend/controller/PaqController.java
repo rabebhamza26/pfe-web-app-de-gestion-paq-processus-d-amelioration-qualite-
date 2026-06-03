@@ -11,8 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.*;
+import com.fasterxml.jackson.databind.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -34,6 +34,73 @@ public class PaqController {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    // Ajoutez cette méthode pour vérifier si un nouveau PAQ peut être créé
+    private boolean peutCreerNouveauPaq(Collaborator collaborator) {
+        if (collaborator.getHireDate() == null) return false;
+
+        // Chercher le dernier PAQ (même archivé)
+        Optional<PaqDossier> dernierPaq = paqRepository.findFirstByCollaboratorMatriculeOrderByDateCreationDesc(collaborator.getMatricule());
+
+        if (dernierPaq.isEmpty()) {
+            // Premier PAQ : pas de condition d'ancienneté
+            return true;
+        }
+
+        // PAQ suivant : attendre 6 mois depuis la création du dernier PAQ
+        LocalDate dateDernierPaq = dernierPaq.get().getDateCreation();
+        LocalDate sixMoisApres = dateDernierPaq.plusMonths(6);
+        return !LocalDate.now().isBefore(sixMoisApres);
+    }
+
+    //  createPaq
+
+    @PostMapping("/create/{matricule}")
+    public ResponseEntity<?> createPaq(@PathVariable String matricule) {
+        Optional<Collaborator> collabOpt = collaboratorRepository.findById(matricule);
+        if (collabOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Collaborateur non trouvé"));
+        }
+
+        Collaborator collaborator = collabOpt.get();
+
+        // Vérifier si on peut créer un PAQ (premier ou après 6 mois)
+        if (!peutCreerNouveauPaq(collaborator)) {
+            Optional<PaqDossier> dernierPaq = paqRepository.findFirstByCollaboratorMatriculeOrderByDateCreationDesc(matricule);
+            if (dernierPaq.isPresent()) {
+                LocalDate dateProchainPaq = dernierPaq.get().getDateCreation().plusMonths(6);
+                return ResponseEntity.badRequest().body(Map.of("message",
+                        String.format("Un nouveau PAQ peut être créé à partir du %s", dateProchainPaq)));
+            }
+            return ResponseEntity.badRequest().body(Map.of("message", "Impossible de créer un PAQ"));
+        }
+
+        // Vérifier s'il existe déjà un PAQ actif
+        Optional<PaqDossier> existing = paqRepository.findFirstByCollaboratorMatriculeAndActifTrueAndArchivedFalse(matricule);
+        if (existing.isPresent()) {
+            return ResponseEntity.ok(existing.get());
+        }
+
+        PaqDossier paq = new PaqDossier();
+        paq.setCollaboratorMatricule(matricule);
+        paq.setDateCreation(LocalDate.now());
+        paq.setDateFin(LocalDate.now().plusMonths(6));
+        paq.setCreatedAt(LocalDateTime.now());
+        paq.setNiveau(0);
+        paq.setStatut("EN_COURS");
+        paq.setActif(true);
+        paq.setArchived(false);
+
+        String historique = addHistorique(null, new HistoriqueEvent(
+                LocalDate.now(),
+                "Création du dossier PAQ",
+                String.format("Dossier créé. Ancienneté: %d mois",
+                        ChronoUnit.MONTHS.between(collaborator.getHireDate(), LocalDate.now()))
+        ));
+        paq.setHistorique(historique);
+
+        PaqDossier saved = paqRepository.save(paq);
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+    }
 
 
     public static class HistoriqueEvent {
@@ -173,47 +240,7 @@ public class PaqController {
 
 
 
-    @PostMapping("/create/{matricule}")
-    public ResponseEntity<?> createPaq(@PathVariable String matricule) {
-        Optional<Collaborator> collabOpt = collaboratorRepository.findById(matricule);
-        if (collabOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Collaborateur non trouvé"));
-        }
 
-        Collaborator collaborator = collabOpt.get();
-
-        if (!peutCreerPaq(collaborator)) {
-            long moisRestants = 6 - ChronoUnit.MONTHS.between(collaborator.getHireDate(), LocalDate.now());
-            return ResponseEntity.badRequest().body(Map.of("message",
-                    String.format("PAQ disponible après 6 mois d'ancienneté. Encore %d mois.", moisRestants)));
-        }
-
-        Optional<PaqDossier> existing = paqRepository.findFirstByCollaboratorMatriculeAndActifTrueAndArchivedFalse(matricule);
-        if (existing.isPresent()) {
-            return ResponseEntity.ok(existing.get());
-        }
-
-        PaqDossier paq = new PaqDossier();
-        paq.setCollaboratorMatricule(matricule);
-        paq.setDateCreation(LocalDate.now());
-        paq.setDateFin(LocalDate.now().plusMonths(6));   // ← processus de 6 mois
-        paq.setCreatedAt(LocalDateTime.now());
-        paq.setNiveau(0);
-        paq.setStatut("EN_COURS");
-        paq.setActif(true);
-        paq.setArchived(false);
-
-        String historique = addHistorique(null, new HistoriqueEvent(
-                LocalDate.now(),
-                "Création du dossier PAQ",
-                String.format("Dossier créé après %d mois d'ancienneté",
-                        ChronoUnit.MONTHS.between(collaborator.getHireDate(), LocalDate.now()))
-        ));
-        paq.setHistorique(historique);
-
-        PaqDossier saved = paqRepository.save(paq);
-        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
-    }
 
 
 

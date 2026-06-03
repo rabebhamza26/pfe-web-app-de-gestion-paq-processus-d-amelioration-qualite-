@@ -1,0 +1,22 @@
+# Backend
+**/target/
+**/.mvn/
+**/mvnw
+**/mvnw.cmd
+*.log
+*.jar
+*.war
+
+# Frontend
+**/node_modules/
+**/build/
+**/.env.local
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -30,6 +30,10 @@ export function AuthProvider({ children }) {
 
   // ✅ Login : stocker user + token
   const login = (userData, accessToken, refreshToken) => {
+     if (userData.siteName) userData.siteName = userData.siteName.trim();
+    if (userData.plantName) userData.plantName = userData.plantName.trim();
+    
+    setUser(userData);
     setUser(userData);
     setToken(accessToken);
     sessionStorage.setItem("access_token", accessToken);

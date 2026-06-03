@@ -852,3 +852,40 @@
     display: none;
   }
 }
+
+.niveau-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: white;
+}
+
+.n0 {
+  background: #10b981;
+}
+
+.n1 {
+  background: #f59e0b;
+}
+
+.n2 {
+  background: #fb923c;
+}
+
+.n3 {
+  background: #ef4444;
+}
+
+.n4 {
+  background: #dc2626;
+}
+
+.n5 {
+  background: #991b1b;
+}

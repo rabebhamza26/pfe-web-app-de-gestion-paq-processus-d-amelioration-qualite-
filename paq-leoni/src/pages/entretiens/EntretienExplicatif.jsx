@@ -16,7 +16,7 @@ const buildDefaultForm = () => ({
   mesuresCorrectives: "",
   commentaire: "",
   defautGrave: false,
-  casca: "", // NOUVEAU - CASCA optionnel
+  ksk: "", // NOUVEAU - KSK optionnel
 });
 
 export default function EntretienExplicatif({ niveau = 1 }) {
@@ -122,7 +122,7 @@ export default function EntretienExplicatif({ niveau = 1 }) {
       mesuresCorrectives: entretien.mesuresCorrectives || "",
       commentaire: entretien.commentaire || "",
       defautGrave: entretien.defautGrave || false,
-      casca: entretien.casca || "", // NOUVEAU - Récupérer la valeur CASCA
+      ksk: entretien.ksk || "", // NOUVEAU - Récupérer la valeur KSK
     });
     
     if (entretien.typeFaute && !typeOptions.includes(entretien.typeFaute)) {
@@ -141,8 +141,8 @@ export default function EntretienExplicatif({ niveau = 1 }) {
     setFormData({ ...formData, [name]: value });
   };
 
-  // Gestion spécifique pour le champ CASCA (numérique)
-  const handleCascaChange = (e) => {
+  // Gestion spécifique pour le champ KSK (numérique)
+  const handleKskChange = (e) => {
     if (!canModify) {
       showErrorAlert("Permission refusée", "Seuls les SL et SGL peuvent modifier un entretien.");
       return;
@@ -150,7 +150,7 @@ export default function EntretienExplicatif({ niveau = 1 }) {
     const value = e.target.value;
     // Permettre les nombres positifs, négatifs, décimaux, ou vide
     if (value === "" || value === "-" || /^-?\d*\.?\d*$/.test(value)) {
-      setFormData({ ...formData, casca: value });
+      setFormData({ ...formData, ksk: value });
     }
   };
 
@@ -223,7 +223,7 @@ export default function EntretienExplicatif({ niveau = 1 }) {
         description: formData.description,
         mesuresCorrectives: formData.mesuresCorrectives,
         defautGrave: formData.defautGrave,
-        casca: formData.casca ? parseFloat(formData.casca) : null, // NOUVEAU
+        ksk: formData.ksk ? parseFloat(formData.ksk) : null, // NOUVEAU
       };
 
       const response = await entretienService.create(matricule, entretienData);
@@ -267,7 +267,7 @@ export default function EntretienExplicatif({ niveau = 1 }) {
         description: formData.description,
         mesuresCorrectives: formData.mesuresCorrectives,
         defautGrave: formData.defautGrave,
-        casca: formData.casca ? parseFloat(formData.casca) : null, // NOUVEAU
+        ksk: formData.ksk ? parseFloat(formData.ksk) : null, // NOUVEAU
       };
 
       await entretienService.update(matricule, currentEntretienId, entretienData);
@@ -376,17 +376,17 @@ export default function EntretienExplicatif({ niveau = 1 }) {
         </div>
 
         <div className="leoni-header-actions">
-          {/* NOUVEAU : Champ CASCA dans l'en-tête */}
+          {/* NOUVEAU : Champ KSK dans l'en-tête */}
           <div className="leoni-casca-field">
-            <label htmlFor="casca" className="leoni-casca-label">
-              CASCA
+            <label htmlFor="ksk" className="leoni-casca-label">
+              KSK
             </label>
             <input
               type="text"
-              id="casca"
-              name="casca"
-              value={formData.casca}
-              onChange={handleCascaChange}
+              id="ksk"
+              name="ksk"
+              value={formData.ksk}
+              onChange={handleKskChange}
               className="leoni-input leoni-input-casca"
               placeholder="Optionnel"
               disabled={!canModify || isValidated}

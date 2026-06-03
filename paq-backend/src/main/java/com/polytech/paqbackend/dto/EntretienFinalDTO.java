@@ -8,14 +8,13 @@ public class EntretienFinalDTO {
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate dateEntretien;
     private String typeFaute;
+    private String causePrincipale; // NOUVEAU
     private String commentaireRH;
     private String destinataireEmail;
+    private Double ksk; // RENOMMÉ
 
-    // Dans EntretienFinalRequestDTO.java (si vous en avez un)
-    private Double casca;
-
-    public Double getCasca() { return casca; }
-    public void setCasca(Double casca) { this.casca = casca; }
+    public Double getKsk() { return ksk; }
+    public void setKsk(Double ksk) { this.ksk = ksk; }
 
     public String getDecision() { return decision; }
     public void setDecision(String decision) { this.decision = decision; }
@@ -28,6 +27,9 @@ public class EntretienFinalDTO {
 
     public String getTypeFaute() { return typeFaute; }
     public void setTypeFaute(String typeFaute) { this.typeFaute = typeFaute; }
+
+    public String getCausePrincipale() { return causePrincipale; }
+    public void setCausePrincipale(String causePrincipale) { this.causePrincipale = causePrincipale; }
 
     public String getCommentaireRH() { return commentaireRH; }
     public void setCommentaireRH(String commentaireRH) { this.commentaireRH = commentaireRH; }

@@ -264,9 +264,7 @@ console.log("Chart data final:", chartData);
           <button className="btn btn-outline-success" onClick={() => handleExport("pdf")} disabled={exportLoading}>
             {exportLoading ? "Export..." : "Export PDF"}
           </button>
-          <button className="btn btn-outline-success" onClick={() => handleExport("excel")} disabled={exportLoading}>
-            {exportLoading ? "Export..." : "Export Excel"}
-          </button>
+          
         </div>
       </div>
 

@@ -330,7 +330,8 @@ const buildDefaultForm = () => ({
   dateEntretien: new Date().toISOString().split("T")[0],
   decision: "",
   justification: "",
-  casca: "", // Champ CASCA optionnel
+  causePrincipale: "",
+  ksk: "", // Champ KSK optionnel
 });
 
 // ─── Composant principal ──────────────────────────────────────────────────────
@@ -557,7 +558,8 @@ const loadEmailsByPerimeter = async () => {
       dateEntretien: entretien.dateEntretien || new Date().toISOString().split("T")[0],
       decision: entretien.decision || "",
       justification: entretien.justification || "",
-      casca: entretien.casca || "",
+      causePrincipale: entretien.causePrincipale || "",
+      ksk: entretien.ksk || "",
     });
     if (entretien.typeFaute && !typeOptions.includes(entretien.typeFaute)) {
       setTypeOptions(prev => [...prev, entretien.typeFaute]);
@@ -586,15 +588,15 @@ const loadEmailsByPerimeter = async () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Gestion spécifique pour le champ CASCA (numérique)
-  const handleCascaChange = (e) => {
+  // Gestion spécifique pour le champ KSK (numérique)
+  const handleKskChange = (e) => {
     if (!canModify && userRole !== "HP" && userRole !== "SGL" && userRole !== "QM_PLANT") {
       showErrorAlert("Permission refusée", "Vous n'avez pas les droits.");
       return;
     }
     const value = e.target.value;
     if (value === "" || value === "-" || /^-?\d*\.?\d*$/.test(value)) {
-      setFormData(prev => ({ ...prev, casca: value }));
+      setFormData(prev => ({ ...prev, ksk: value }));
     }
   };
 
@@ -642,7 +644,8 @@ const loadEmailsByPerimeter = async () => {
         dateEntretien: formData.dateEntretien,
         decision: formData.decision,
         justification: formData.justification || "",
-        casca: formData.casca ? parseFloat(formData.casca) : null,
+        causePrincipale: formData.causePrincipale || "",
+        ksk: formData.ksk ? parseFloat(formData.ksk) : null,
         destinatairesEmails: destinatairesEmails,
       };
 
@@ -685,7 +688,8 @@ const loadEmailsByPerimeter = async () => {
         dateEntretien: formData.dateEntretien,
         decision: formData.decision,
         justification: formData.justification || "",
-        casca: formData.casca ? parseFloat(formData.casca) : null,
+        causePrincipale: formData.causePrincipale || "",
+        ksk: formData.ksk ? parseFloat(formData.ksk) : null,
       };
 
       await entretienDecisionService.valider1(matricule, currentEntretienId, entretienData);
@@ -714,7 +718,8 @@ const loadEmailsByPerimeter = async () => {
         dateEntretien: formData.dateEntretien,
         decision: formData.decision,
         justification: formData.justification || "",
-        casca: formData.casca ? parseFloat(formData.casca) : null,
+        causePrincipale: formData.causePrincipale || "",
+        ksk: formData.ksk ? parseFloat(formData.ksk) : null,
       };
 
       await entretienDecisionService.valider2(matricule, currentEntretienId, entretienData);
@@ -850,17 +855,17 @@ const loadEmailsByPerimeter = async () => {
         </div>
 
         <div className="leoni-header-actions">
-          {/* Champ CASCA dans l'en-tête */}
+          {/* Champ KSK dans l'en-tête */}
           <div className="leoni-casca-field">
-            <label htmlFor="casca" className="leoni-casca-label">
-              CASCA
+            <label htmlFor="ksk" className="leoni-casca-label">
+              KSK
             </label>
             <input
               type="text"
-              id="casca"
-              name="casca"
-              value={formData.casca}
-              onChange={handleCascaChange}
+              id="ksk"
+              name="ksk"
+              value={formData.ksk}
+              onChange={handleKskChange}
               className="leoni-input leoni-input-casca"
               placeholder="Optionnel"
               disabled={valideQMPlant || (!isEditable && userRole !== "HP" && userRole !== "SGL" && userRole !== "QM_PLANT")}
@@ -999,7 +1004,7 @@ const loadEmailsByPerimeter = async () => {
 
                 {/* Type de faute */}
                 <div className="leoni-form-group">
-                  <label>Type de faute *</label>
+                  <label>Type de faute </label>
                   <div className="leoni-inline">
                     {isEditable && !valideQMPlant && (
                       <button
@@ -1047,7 +1052,7 @@ const loadEmailsByPerimeter = async () => {
 
                 {/* Date */}
                 <div className="leoni-form-group">
-                  <label>Date entretien *</label>
+                  <label>Date entretien </label>
                   <input
                     type="date"
                     name="dateEntretien"
@@ -1058,10 +1063,23 @@ const loadEmailsByPerimeter = async () => {
                     required
                   />
                 </div>
+                 {/* Cause principale */}
+                <div className="leoni-form-group">
+                  <label>Cause principale</label>
+                  <input
+                    type="text"
+                    name="causePrincipale"
+                    value={formData.causePrincipale}
+                    onChange={handleChange}
+                    className="leoni-input"
+                    disabled={valideQMPlant || (!isEditable && userRole !== "HP" && userRole !== "SGL" && userRole !== "QM_PLANT")}
+                    placeholder="Indiquez la cause principale"
+                  />
+                </div>
 
                 {/* Décision */}
                 <div className="leoni-form-group">
-                  <label>Décision *</label>
+                  <label>Décision </label>
                   <select
                     name="decision"
                     value={formData.decision}
@@ -1078,6 +1096,8 @@ const loadEmailsByPerimeter = async () => {
                     <option value="Licenciement">Licenciement</option>
                   </select>
                 </div>
+
+               
 
                 {/* Justification */}
                 <div className="leoni-form-group">

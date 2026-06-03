@@ -18,23 +18,18 @@ public class EntretienFinal {
     private LocalDate dateEntretien;
     private String typeFaute;
 
+    // NOUVEAU CHAMP - causePrincipale (selon diagramme)
+    @Column(columnDefinition = "TEXT")
+    private String causePrincipale;
+
     @Column(columnDefinition = "TEXT")
     private String commentaireRH;
 
-    // NOUVEAU CHAMP CASCA (optionnel)
-    @Column(name = "casca", nullable = true)
-    private Double casca;
+    // RENOMMÉ : casca -> ksk
+    @Column(name = "ksk", nullable = true)
+    private Double ksk;
 
     // Getters & Setters
-
-    public Double getCasca() {
-        return casca;
-    }
-
-    public void setCasca(Double casca) {
-        this.casca = casca;
-    }
-
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -50,6 +45,12 @@ public class EntretienFinal {
     public String getTypeFaute() { return typeFaute; }
     public void setTypeFaute(String typeFaute) { this.typeFaute = typeFaute; }
 
+    public String getCausePrincipale() { return causePrincipale; }
+    public void setCausePrincipale(String causePrincipale) { this.causePrincipale = causePrincipale; }
+
     public String getCommentaireRH() { return commentaireRH; }
     public void setCommentaireRH(String commentaireRH) { this.commentaireRH = commentaireRH; }
+
+    public Double getKsk() { return ksk; }
+    public void setKsk(Double ksk) { this.ksk = ksk; }
 }
