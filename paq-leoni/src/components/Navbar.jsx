@@ -6,11 +6,9 @@ import NotificationBell from "./NotificationBell";
 import API from "../services/api";
 import "../styles/navbar.css";
 
-
-
 function Navbar() {
   const { user, logout, loading } = useAuth();
-  const { lang, setLang, t } = useI18n();
+  const { t } = useI18n();
 
   const handleLogout = async () => {
     try {
@@ -22,16 +20,6 @@ function Navbar() {
       window.location.href = "/";
     }
   };
-
-  const handleLanguageChange = (event) => {
-    setLang(event.target.value);
-  };
-
-  const languageOptions = [
-    { code: "fr", label: "FR" },
-    { code: "en", label: "EN" },
-    { code: "ar", label: "AR" },
-  ];
 
   const getFormattedDate = () => {
     const now = new Date();
@@ -97,14 +85,6 @@ function Navbar() {
       </div>
 
       <div className="navbar-right">
-        <div className="navbar-lang" title={t("change_language")}>
-          <label htmlFor="lang-select" className="navbar-lang-label">{lang.toUpperCase()}</label>
-          <select id="lang-select" value={lang} onChange={handleLanguageChange} className="navbar-lang-select">
-            {languageOptions.map(({ code, label }) => (
-              <option key={code} value={code}>{label}</option>
-            ))}
-          </select>
-        </div>
         {user && (
           <>
             <NotificationBell />

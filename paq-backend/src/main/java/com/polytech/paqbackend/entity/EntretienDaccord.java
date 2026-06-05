@@ -32,13 +32,22 @@ public class EntretienDaccord {
     // true = QM_SEGMENT a validé définitivement (enregistré dans le dossier PAQ)
     private Boolean valideQM = false;
 
-    // NOUVEAU CHAMP KSK (optionnel) - remplace casca
-    @Column(name = "ksk", nullable = true)
-    private Double ksk;
+    // NOUVEAU CHAMP CASCA (optionnel)
+    @Column(name = "casca", nullable = true)
+    private Double casca;
+
+
+
 
     // Getters et Setters
-    public Double getKsk() { return ksk; }
-    public void setKsk(Double ksk) { this.ksk = ksk; }
+
+    public Double getCasca() {
+        return casca;
+    }
+
+    public void setCasca(Double casca) {
+        this.casca = casca;
+    }
 
     public Boolean getValide() { return valide; }
     public void setValide(Boolean valide) { this.valide = valide; }

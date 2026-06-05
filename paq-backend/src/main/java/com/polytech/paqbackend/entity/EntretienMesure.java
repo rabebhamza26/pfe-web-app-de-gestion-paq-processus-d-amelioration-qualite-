@@ -25,11 +25,13 @@ public class EntretienMesure {
 
     private LocalDate dateEntretien;
     private LocalDate dateCreation;
+    private boolean alerteEnvoyee = false;
 
-    // NOUVEAU CHAMP KSK (optionnel) - remplace casca
-    @Column(name = "ksk", nullable = true)
-    private Double ksk;
+    // NOUVEAU CHAMP CASCA (optionnel)
+    @Column(name = "casca", nullable = true)
+    private Double casca;
 
+    // ⭐ Avec @Column pour correspondre aux noms des colonnes dans la base
     @Column(name = "valide_sl")
     private boolean valideSL = false;
 
@@ -61,8 +63,12 @@ public class EntretienMesure {
     public LocalDate getDateEntretien() { return dateEntretien; }
     public void setDateEntretien(LocalDate dateEntretien) { this.dateEntretien = dateEntretien; }
 
+
     public LocalDate getDateCreation() { return dateCreation; }
     public void setDateCreation(LocalDate dateCreation) { this.dateCreation = dateCreation; }
+
+    public boolean isAlerteEnvoyee() { return alerteEnvoyee; }
+    public void setAlerteEnvoyee(boolean alerteEnvoyee) { this.alerteEnvoyee = alerteEnvoyee; }
 
     public boolean isValideSL() { return valideSL; }
     public void setValideSL(boolean valideSL) { this.valideSL = valideSL; }
@@ -73,6 +79,11 @@ public class EntretienMesure {
     public boolean isValideSGL() { return valideSGL; }
     public void setValideSGL(boolean valideSGL) { this.valideSGL = valideSGL; }
 
-    public Double getKsk() { return ksk; }
-    public void setKsk(Double ksk) { this.ksk = ksk; }
+    public Double getCasca() {
+        return casca;
+    }
+
+    public void setCasca(Double casca) {
+        this.casca = casca;
+    }
 }

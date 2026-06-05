@@ -1,7 +1,5 @@
-package com.polytech.paqbackend.controller;
+package com.polytech.paqbackend.auth;
 
-import com.polytech.paqbackend.auth.AuthenticationRequest;
-import com.polytech.paqbackend.auth.AuthenticationResponse;
 import com.polytech.paqbackend.config.JwtService;
 import com.polytech.paqbackend.entity.ErrorResponse;
 import com.polytech.paqbackend.entity.LoginRequest;

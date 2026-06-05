@@ -1,4 +1,3 @@
-// src/pages/Notifications.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";  // ✅ Ajout de l'import manquant
 import { notificationService } from "../services/api";

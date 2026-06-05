@@ -354,6 +354,9 @@ public class EntretienExplicatifService {
                 .orElseThrow(() -> new RuntimeException("Entretien introuvable: " + id));
     }
 
+    public void delete(Long id) {
+        entretienRepo.deleteById(id);
+    }
 
     private void mapDtoToEntity(EntretienExplicatifDTO dto, EntretienExplicatif e) {
         e.setTypeFaute(dto.getTypeFaute());

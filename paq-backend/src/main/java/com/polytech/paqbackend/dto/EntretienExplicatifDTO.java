@@ -8,11 +8,21 @@ public class EntretienExplicatifDTO {
     private String description;
     private String mesuresCorrectives;
     private String notes;
-    private boolean defautGrave;
-    private Double ksk; // RENOMMÉ
 
-    public boolean isDefautGrave() { return defautGrave; }
-    public void setDefautGrave(boolean defautGrave) { this.defautGrave = defautGrave; }
+    private boolean defautGrave;
+
+    private Double casca; // NOUVEAU
+
+
+    // Getters et Setters
+
+    public boolean isDefautGrave() {
+        return defautGrave;
+    }
+
+    public void setDefautGrave(boolean defautGrave) {
+        this.defautGrave = defautGrave;
+    }
 
     public String getTypeFaute() { return typeFaute; }
     public void setTypeFaute(String typeFaute) { this.typeFaute = typeFaute; }
@@ -29,6 +39,11 @@ public class EntretienExplicatifDTO {
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
 
-    public Double getKsk() { return ksk; }
-    public void setKsk(Double ksk) { this.ksk = ksk; }
+    public Double getCasca() {
+        return casca;
+    }
+
+    public void setCasca(Double casca) {
+        this.casca = casca;
+    }
 }

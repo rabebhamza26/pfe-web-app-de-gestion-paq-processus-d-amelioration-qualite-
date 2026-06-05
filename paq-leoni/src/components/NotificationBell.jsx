@@ -30,6 +30,74 @@ function NotificationBell() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const connectWebSocket = () => {
+  if (!user || !token) {
+    console.log("Utilisateur non connecté, WebSocket non connecté");
+    return;
+  }
+
+  const stompUrl = `${import.meta.env.VITE_API_URL || "http://localhost:8083"}/ws`;
+  
+  console.log("Connexion WebSocket à:", stompUrl);
+  
+  if (stompClient.current && stompClient.current.active) {
+    stompClient.current.deactivate();
+  }
+  
+  const socket = new SockJS(stompUrl);
+  
+  stompClient.current = new Client({
+    webSocketFactory: () => socket,
+    connectHeaders: {
+      Authorization: `Bearer ${token}`
+    },
+    debug: (str) => {
+      console.log("STOMP Debug:", str);
+    },
+    onConnect: () => {
+      console.log("WebSocket connecté avec succès");
+      setConnected(true);
+      reconnectAttempts.current = 0;
+      
+      // ✅ S'abonner à la queue personnelle
+      stompClient.current.subscribe("/user/queue/notifications", (message) => {
+        console.log("Nouvelle notification reçue:", message.body);
+        try {
+          const newNotification = JSON.parse(message.body);
+          console.log("Notification parsée:", newNotification);
+          
+          setNotifications(prev => {
+            // Éviter les doublons
+            const exists = prev.some(n => n.id === newNotification.id);
+            if (exists) return prev;
+            return [newNotification, ...prev];
+          });
+          
+          if (!newNotification.lu) {
+            setUnreadCount(prev => prev + 1);
+          }
+        } catch (err) {
+          console.error("Erreur parsing notification:", err);
+        }
+      });
+    },
+    onStompError: (frame) => {
+      console.error("Erreur STOMP:", frame);
+      setConnected(false);
+    },
+    onDisconnect: () => {
+      console.log("WebSocket déconnecté");
+      setConnected(false);
+    },
+    onWebSocketError: (event) => {
+      console.error("WebSocket error:", event);
+      setConnected(false);
+    }
+  });
+  
+  stompClient.current.activate();
+};
+
   const loadUnreadCount = async () => {
     try {
       const res = await notificationService.countUnread();

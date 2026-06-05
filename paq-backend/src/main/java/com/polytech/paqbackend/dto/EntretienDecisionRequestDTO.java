@@ -6,29 +6,34 @@ import java.util.List;
 public class EntretienDecisionRequestDTO {
     private String typeFaute;
     private LocalDate dateEntretien;
-    private String causePrincipale; // NOUVEAU
+    private String synthese;
     private String decision;
     private String justification;
-    private String destinataireEmail;
-    private List<String> destinatairesEmails;
-    private String messageOptionnel;
-    private Double ksk; // RENOMMÉ
+    private String destinataireEmail; // Gardé pour compatibilité
+    private List<String> destinatairesEmails; // Liste d'emails pour SL
+    private String messageOptionnel; // Message optionnel
+    private Double casca; // NOUVEAU
 
-    public Double getKsk() { return ksk; }
-    public void setKsk(Double ksk) { this.ksk = ksk; }
+    public Double getCasca() {
+        return casca;
+    }
 
+    public void setCasca(Double casca) {
+        this.casca = casca;
+    }
+
+    // GETTERS & SETTERS
     public String getTypeFaute() { return typeFaute; }
     public void setTypeFaute(String typeFaute) { this.typeFaute = typeFaute; }
 
     public LocalDate getDateEntretien() { return dateEntretien; }
     public void setDateEntretien(LocalDate dateEntretien) { this.dateEntretien = dateEntretien; }
 
-    public String getCausePrincipale() { return causePrincipale; }
-    public void setCausePrincipale(String causePrincipale) { this.causePrincipale = causePrincipale; }
-
     public String getDestinataireEmail() { return destinataireEmail; }
     public void setDestinataireEmail(String destinataireEmail) { this.destinataireEmail = destinataireEmail; }
 
+    public String getSynthese() { return synthese; }
+    public void setSynthese(String synthese) { this.synthese = synthese; }
 
     public String getDecision() { return decision; }
     public void setDecision(String decision) { this.decision = decision; }

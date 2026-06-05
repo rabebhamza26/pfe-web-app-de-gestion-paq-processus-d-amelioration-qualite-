@@ -86,7 +86,7 @@ public class EntretienDaccordService {
         e.setCauseFaute(dto.getCauseFaute());
         e.setMesuresProposees(dto.getMesuresProposees() != null ? dto.getMesuresProposees() : "");
         e.setValide(false);
-        e.setKsk(dto.getKsk()); // NOUVEAU
+        e.setCasca(dto.getCasca()); // NOUVEAU
 
 
         EntretienDaccord saved = repo.save(e);
@@ -125,7 +125,7 @@ public class EntretienDaccordService {
         if (dto.getCauseFaute() != null) existing.setCauseFaute(dto.getCauseFaute());
         if (dto.getMesuresProposees() != null) existing.setMesuresProposees(dto.getMesuresProposees());
 
-        if (dto.getKsk() != null) existing.setKsk(dto.getKsk()); // NOUVEAU
+        if (dto.getCasca() != null) existing.setCasca(dto.getCasca()); // NOUVEAU
 
         EntretienDaccord updated = repo.save(existing);
 
@@ -211,7 +211,7 @@ public class EntretienDaccordService {
         if (dto.getTypeFaute() != null) existing.setTypeFaute(dto.getTypeFaute());
         if (dto.getCauseFaute() != null) existing.setCauseFaute(dto.getCauseFaute());
         if (dto.getMesuresProposees() != null) existing.setMesuresProposees(dto.getMesuresProposees());
-        if (dto.getKsk() != null) existing.setKsk(dto.getKsk()); // NOUVEAU
+        if (dto.getCasca() != null) existing.setCasca(dto.getCasca()); // NOUVEAU
 
         // Marquer validé par QM
         existing.setValide(true);
@@ -261,6 +261,9 @@ public class EntretienDaccordService {
         return repo.findByMatricule(matricule);
     }
 
+    public void delete(Long id) {
+        repo.deleteById(id);
+    }
 
     private String getCollaborateurNom(String matricule) {
         try {

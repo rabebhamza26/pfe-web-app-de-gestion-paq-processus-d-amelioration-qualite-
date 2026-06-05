@@ -17,13 +17,11 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
 import java.util.List;
 
 @Configuration
-@EnableWebSocketMessageBroker
 @Order(Ordered.HIGHEST_PRECEDENCE + 99)
 public class WebSocketAuthService implements WebSocketMessageBrokerConfigurer {
 
@@ -42,20 +40,30 @@ public class WebSocketAuthService implements WebSocketMessageBrokerConfigurer {
             @Override
             public Message<?> preSend(Message<?> message, MessageChannel channel) {
                 StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
+
                 if (StompCommand.CONNECT.equals(accessor.getCommand())) {
                     List<String> authHeaders = accessor.getNativeHeader("Authorization");
+
                     if (authHeaders != null && !authHeaders.isEmpty()) {
                         String token = authHeaders.get(0);
+
                         if (token.startsWith("Bearer ")) {
                             token = token.substring(7);
                         }
+
                         String username = extractUsernameFromToken(token);
-                        if (username != null) {
-                            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                            Authentication auth = new UsernamePasswordAuthenticationToken(
-                                    userDetails, null, userDetails.getAuthorities()
-                            );
-                            accessor.setUser(auth);
+
+                        if (username != null && !username.isEmpty()) {
+                            try {
+                                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                                Authentication auth = new UsernamePasswordAuthenticationToken(
+                                        userDetails, null, userDetails.getAuthorities()
+                                );
+                                accessor.setUser(auth);
+                                System.out.println("WebSocket authentifié pour: " + username);
+                            } catch (Exception e) {
+                                System.err.println("Erreur chargement user: " + e.getMessage());
+                            }
                         }
                     }
                 }
@@ -66,13 +74,13 @@ public class WebSocketAuthService implements WebSocketMessageBrokerConfigurer {
 
     private String extractUsernameFromToken(String token) {
         try {
-            // Version compatible JJWT 0.11.x
             Claims claims = Jwts.parser()
                     .setSigningKey(SECRET_KEY.getBytes())
                     .parseClaimsJws(token)
                     .getBody();
             return claims.getSubject();
         } catch (Exception e) {
+            System.err.println("Erreur extraction token: " + e.getMessage());
             return null;
         }
     }

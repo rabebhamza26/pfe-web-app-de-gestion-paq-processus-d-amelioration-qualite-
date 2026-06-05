@@ -122,15 +122,38 @@ export default function CollaboratorManagement() {
     return new Date() >= limit;
   };
 
-  const hasActivePaq = (collab) => {
+ const hasActivePaq = (collab) => {
     // Utiliser le champ hasActivePaq du backend s'il existe
     if (collab.hasActivePaq !== undefined) {
-      return collab.hasActivePaq === true;
+        return collab.hasActivePaq === true;
     }
     // Fallback: vérifier par le statut
     const s = (collab.statut || "").toUpperCase();
     return s !== "POSITIF" && s !== "N/A" && collab.niveau !== undefined && collab.niveau !== null;
-  };
+};
+
+const peutCreerPaq = (collab) => {
+    // Si le backend fournit l'information
+    if (collab.peutCreerPaq !== undefined) {
+        return collab.peutCreerPaq === true;
+    }
+    
+    // Fallback: si pas de PAQ actif
+    if (hasActivePaq(collab)) return false;
+    
+    // Vérifier la date de création du dernier PAQ dans le localStorage
+    const lastPaqDate = localStorage.getItem(`last_paq_${collab.matricule}`);
+    if (!lastPaqDate) {
+        // Premier PAQ : toujours possible
+        return true;
+    }
+    
+    const lastDate = new Date(lastPaqDate);
+    const sixMonthsLater = new Date(lastDate);
+    sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6);
+    
+    return new Date() >= sixMonthsLater;
+};
 
   const formatDate = (d) => {
     if (!d) return "N/A";
@@ -274,39 +297,39 @@ export default function CollaboratorManagement() {
                 const hasPaq = hasActivePaq(c);
 
                 // CORRECTION : Utiliser 'c' au lieu de 'collab'
-                let paqButton = null;
-                if (hasActivePaq(c)) {
-                  paqButton = (
-                    <button
-                      className="action-btn btn-view"
-                      onClick={() => navigate(`/paq-dossier/${c.matricule}`)}
-                      title="Consulter le dossier PAQ"
-                    >
-                      Voir PAQ
-                    </button>
-                  );
-                } else if (c.peutCreerPaq === true) {
-                  paqButton = (
-                    <button
-                      className="action-btn btn-paq"
-                      onClick={() => navigate(`/paq-dossier/${c.matricule}`)}
-                      title="Créer le dossier PAQ"
-                    >
-                      Créer PAQ
-                    </button>
-                  );
-                } else {
-                  paqButton = (
-                    <button
-                      className="action-btn btn-paq-disabled"
-                      disabled
-                      title={c.prochainPaqDate ? `Nouveau PAQ disponible à partir du ${new Date(c.prochainPaqDate).toLocaleDateString('fr-FR')}` : "PAQ non disponible"}
-                    >
-                      Créer PAQ
-                    </button>
-                  );
-                }
-
+               let paqButton = null;
+if (hasActivePaq(c)) {
+    paqButton = (
+        <button
+            className="action-btn btn-view"
+            onClick={() => navigate(`/paq-dossier/${c.matricule}`)}
+            title="Consulter le dossier PAQ"
+        >
+            Voir PAQ
+        </button>
+    );
+} else if (peutCreerPaq(c)) {
+    paqButton = (
+        <button
+            className="action-btn btn-paq"
+            onClick={() => navigate(`/paq-dossier/${c.matricule}`)}
+            title="Créer le dossier PAQ"
+        >
+            Créer PAQ
+        </button>
+    );
+} else {
+    const prochainPaqDate = c.prochainPaqDate ? new Date(c.prochainPaqDate) : null;
+    paqButton = (
+        <button
+            className="action-btn btn-paq-disabled"
+            disabled
+            title={prochainPaqDate ? `Nouveau PAQ disponible à partir du ${prochainPaqDate.toLocaleDateString('fr-FR')}` : "PAQ non disponible"}
+        >
+            Créer PAQ
+        </button>
+    );
+}
                 return (
                   <tr key={c.matricule}>
                     <td className="matricule-cell">{c.matricule}</td>

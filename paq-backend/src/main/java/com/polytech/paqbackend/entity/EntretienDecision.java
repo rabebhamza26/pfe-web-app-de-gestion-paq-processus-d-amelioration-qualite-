@@ -15,10 +15,6 @@ public class EntretienDecision {
     private String typeFaute;
     private LocalDate dateEntretien;
 
-    // NOUVEAU CHAMP - causePrincipale (selon diagramme)
-    @Column(columnDefinition = "TEXT")
-    private String causePrincipale;
-
     @Column(columnDefinition = "TEXT")
     private String decision;
 
@@ -27,20 +23,30 @@ public class EntretienDecision {
 
     private LocalDate dateCreation;
 
-    // RENOMMÉ : casca -> ksk
-    @Column(name = "ksk", nullable = true)
-    private Double ksk;
+    // NOUVEAU CHAMP CASCA (optionnel)
+    @Column(name = "casca", nullable = true)
+    private Double casca;
 
+    // ⭐ Trois statuts distincts (comme entretien de mesure)
     @Column(name = "valide_sl")
-    private boolean valideSL = false;
+    private boolean  valideSL = false;      // SL a soumis
 
     @Column(name = "valide_hp_sgl")
-    private boolean valideHPSGL = false;
+    private boolean valideHPSGL = false;   // HP/SGL a validé (1ère)
 
     @Column(name = "valide_qm_plant")
-    private boolean valideQMPlant = false;
+    private boolean valideQMPlant = false; // QM_PLANT a validé (2ème)
 
     // Getters et Setters
+
+    public Double getCasca() {
+        return casca;
+    }
+
+    public void setCasca(Double casca) {
+        this.casca = casca;
+    }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -52,9 +58,6 @@ public class EntretienDecision {
 
     public LocalDate getDateEntretien() { return dateEntretien; }
     public void setDateEntretien(LocalDate dateEntretien) { this.dateEntretien = dateEntretien; }
-
-    public String getCausePrincipale() { return causePrincipale; }
-    public void setCausePrincipale(String causePrincipale) { this.causePrincipale = causePrincipale; }
 
     public String getDecision() { return decision; }
     public void setDecision(String decision) { this.decision = decision; }
@@ -73,7 +76,4 @@ public class EntretienDecision {
 
     public boolean isValideQMPlant() { return valideQMPlant; }
     public void setValideQMPlant(boolean valideQMPlant) { this.valideQMPlant = valideQMPlant; }
-
-    public Double getKsk() { return ksk; }
-    public void setKsk(Double ksk) { this.ksk = ksk; }
 }

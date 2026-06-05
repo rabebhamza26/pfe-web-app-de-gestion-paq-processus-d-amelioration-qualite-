@@ -7,6 +7,7 @@ import {
 } from "../../services/api";
 import { useNavigate, useParams } from "react-router-dom";
 import { showConfirmAlert, showErrorAlert, showInfoToast, showSuccessAlert, showSuccessToast } from "../../utils/entretienAlerts";
+import { useI18n } from "../../context/I18nContext";
 
 import "../../styles/entretien-final.css";
 import "../../styles/paq-dossier.css";
@@ -25,6 +26,7 @@ const buildDefaultForm = () => ({
 export default function EntretienFinal({ niveau = 5 }) {
   const { matricule } = useParams();
   const navigate = useNavigate();
+  const { t, lang } = useI18n();
 
   const [typeOptions,       setTypeOptions]       = useState([]);
   const [showDefautModal,   setShowDefautModal]   = useState(false);
@@ -66,7 +68,7 @@ export default function EntretienFinal({ niveau = 5 }) {
       const res = await collaboratorService.getById(matricule);
       setCollaborator(res.data);
     } catch (err) {
-      setError("Impossible de charger les informations du collaborateur");
+      setError(t("unable_to_load_collaborator"));
     } finally {
       setLoading(false);
     }
@@ -119,7 +121,7 @@ export default function EntretienFinal({ niveau = 5 }) {
       setTypeOptions(prev => [...prev, entretien.typeFaute]);
     }
     
-    setStatusMessage("Entretien chargé avec succès.");
+    setStatusMessage(t("meeting_loaded_success"));
     setTimeout(() => setStatusMessage(""), 3000);
   };
 
@@ -153,11 +155,11 @@ export default function EntretienFinal({ niveau = 5 }) {
       setFormData(prev => ({ ...prev, typeFaute: nom }));
       setDefautTypeInput("");
       setShowDefautModal(false);
-      setStatusMessage("Type de faute ajouté avec succès.");
-      showSuccessToast("Faute ajoutée");
+      setStatusMessage(t("fault_type_added"));
+      showSuccessToast(t("fault_added_toast"));
     } catch {
-      setError("Erreur ajout faute");
-      showErrorAlert("Ajout impossible", "Erreur lors de l'ajout du type de faute.");
+      setError(t("fault_add_error"));
+      showErrorAlert(t("fault_add_error_title"), t("fault_add_error_text"));
     }
   };
 
@@ -166,43 +168,43 @@ export default function EntretienFinal({ niveau = 5 }) {
     try {
       const payload = { ...formData, id: currentId };
       localStorage.setItem(`entretien-final-draft-${matricule}`, JSON.stringify(payload));
-      setStatusMessage("Brouillon enregistré.");
-      showSuccessToast("Brouillon enregistré");
+      setStatusMessage(t("draft_saved"));
+      showSuccessToast(t("draft_saved_toast"));
       setTimeout(() => setStatusMessage(""), 3000);
     } catch {
-      setError("Impossible d'enregistrer le brouillon.");
-      showErrorAlert("Brouillon non enregistré", "Impossible d'enregistrer le brouillon.");
+      setError(t("draft_save_failed_text"));
+      showErrorAlert(t("draft_save_failed_title"), t("draft_save_failed_text"));
     }
     finally { setSavingDraft(false); }
   };
 
   const handleAjouter = () => {
     resetForm();
-    setStatusMessage("Formulaire réinitialisé.");
-    showInfoToast("Formulaire réinitialisé");
+    setStatusMessage(t("form_reset_message"));
+    showInfoToast(t("form_reset_toast"));
     setTimeout(() => setStatusMessage(""), 2000);
   };
 
   const handleModifier = async () => {
     if (entretiensList.length === 0) {
-      setError("Aucun entretien final existant à modifier.");
+      setError(t("no_final_meeting_to_edit"));
       return;
     }
     const dernier = entretiensList.sort((a, b) => new Date(b.dateEntretien) - new Date(a.dateEntretien))[0];
     chargerEntretienDansFormulaire(dernier);
-    showInfoToast("Dernier entretien chargé");
+    showInfoToast(t("last_meeting_loaded"));
   };
 
   const handleSupprimer = async () => {
     if (!currentId) {
-      setError("Aucun entretien chargé pour suppression.");
+      setError(t("no_meeting_for_delete"));
       return;
     }
     
     const result = await showConfirmAlert({
-      title: "Supprimer l'entretien final ?",
-      text: "Cette action est définitive.",
-      confirmButtonText: "Oui, supprimer",
+      title: t("confirm_delete_final_meeting_title"),
+      text: t("confirm_delete_final_meeting_text"),
+      confirmButtonText: t("confirm_delete_yes"),
     });
     if (!result.isConfirmed) return;
     
@@ -211,12 +213,12 @@ export default function EntretienFinal({ niveau = 5 }) {
       await entretienFinalService.delete(currentId);
       resetForm();
       await loadAllEntretiens();
-      setStatusMessage("Entretien final supprimé avec succès.");
-      await showSuccessAlert("Entretien supprimé", "L'entretien final a bien été supprimé.");
+      setStatusMessage(t("final_meeting_deleted"));
+      await showSuccessAlert(t("final_meeting_deleted_title"), t("final_meeting_deleted_text"));
       setTimeout(() => navigate(`/paq-dossier/${matricule}`), 1500);
     } catch (err) {
-      setError("Erreur lors de la suppression : " + (err.response?.data?.message || err.message));
-      showErrorAlert("Suppression impossible", err.response?.data?.message || err.message);
+      setError(t("error_saving_data") + ": " + (err.response?.data?.message || err.message));
+      showErrorAlert(t("cannot_save"), err.response?.data?.message || err.message || t("error_saving_data"));
     } finally {
       setSaving(false);
     }
@@ -229,12 +231,12 @@ export default function EntretienFinal({ niveau = 5 }) {
     setSaving(true);
 
     if (!formData.typeFaute) {
-      setError("Le type de faute est obligatoire !");
+      setError(t("fault_type_required"));
       setSaving(false);
       return;
     }
     if (!formData.decision) {
-      setError("La décision RH est obligatoire !");
+      setError(t("decision_required"));
       setSaving(false);
       return;
     }
@@ -251,12 +253,12 @@ export default function EntretienFinal({ niveau = 5 }) {
 
       if (currentId) {
         await entretienFinalService.update(matricule, currentId, payload);
-        setStatusMessage("Entretien final modifié avec succès.");
-        await showSuccessAlert("Entretien modifié", "La modification a été enregistrée avec succès.");
+        setStatusMessage(t("final_meeting_updated"));
+        await showSuccessAlert(t("final_meeting_updated_title"), t("final_meeting_updated_text"));
       } else {
         await entretienFinalService.create(matricule, payload);
-        setStatusMessage("Entretien final créé avec succès, dossier clôturé ✓");
-        await showSuccessAlert("Entretien final créé", "Le dossier a été clôturé avec succès.");
+        setStatusMessage(t("final_meeting_created"));
+        await showSuccessAlert(t("final_meeting_created_title"), t("final_meeting_created_text"));
       }
 
       localStorage.removeItem(`entretien-final-draft-${matricule}`);
@@ -264,16 +266,25 @@ export default function EntretienFinal({ niveau = 5 }) {
       setTimeout(() => navigate(`/paq-dossier/${matricule}`), 1500);
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || err.message || "Erreur lors de l'enregistrement");
-      showErrorAlert("Enregistrement impossible", err.response?.data?.message || err.message || "Erreur lors de l'enregistrement");
+      const errorMessage = err.response?.data?.message || err.message || t("error_saving_data");
+      setError(errorMessage);
+      showErrorAlert(t("cannot_save"), errorMessage);
     } finally { 
       setSaving(false);
     }
   };
 
-  const fmt = d => { if (!d) return "—"; try { return new Date(d).toLocaleDateString("fr-FR"); } catch { return d; } };
+  const fmt = (d) => {
+    if (!d) return "—";
+    try {
+      const locale = lang === "ar" ? "ar-EG" : lang === "fr" ? "fr-FR" : "en-US";
+      return new Intl.DateTimeFormat(locale).format(new Date(d));
+    } catch {
+      return d;
+    }
+  };
 
-  if (loading) return <div className="ef-loading">Chargement...</div>;
+  if (loading) return <div className="ef-loading">{t("loading")}</div>;
 
   return (
     <>
@@ -282,13 +293,13 @@ export default function EntretienFinal({ niveau = 5 }) {
         <div className="leoni-header">
           <div className="leoni-header-left">
             <button onClick={() => navigate(`/paq-dossier/${matricule}`)} className="leoni-btn-back">
-              Retour au dossier
+              {t("return_to_file")}
             </button>
           </div>
           <div className="leoni-header-title">
             <div className="leoni-logo-bar">
               <div className="leoni-logo-accent" />
-              <h1>Etape 5: Entretien Final</h1>
+              <h1>{t("final_meeting_step_title")}</h1>
             </div>
             {collaborator && (
               <span className="leoni-header-sub">
@@ -309,7 +320,7 @@ export default function EntretienFinal({ niveau = 5 }) {
                 value={formData.ksk}
                 onChange={handleKskChange}
                 className="leoni-input leoni-input-casca"
-                placeholder="Optionnel"
+                placeholder={t("optional")}
                 style={{ width: "100px", textAlign: "center" }}
               />
             </div>
@@ -325,7 +336,7 @@ export default function EntretienFinal({ niveau = 5 }) {
                   <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" stroke="currentColor" strokeWidth="2"/>
                   <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="2"/>
                 </svg>
-                Informations Collaborateur
+                {t("collaborator_information")}
               </div>
               <div className="ef-card-bd">
                 <div className="ef-avatar">
@@ -333,10 +344,10 @@ export default function EntretienFinal({ niveau = 5 }) {
                 </div>
                 <div className="ef-cname">{collaborator?.name} {collaborator?.prenom}</div>
                 <div className="ef-igrid">
-                  <div className="ef-icell"><span className="ef-ilbl">Matricule</span><span className="ef-ival">{collaborator?.matricule||"—"}</span></div>
-                  <div className="ef-icell"><span className="ef-ilbl">Segment</span><span className="ef-ival">{collaborator?.segment||"—"}</span></div>
-                  <div className="ef-icell"><span className="ef-ilbl">Embauche</span><span className="ef-ival">{fmt(collaborator?.hireDate)}</span></div>
-                  <div className="ef-icell"><span className="ef-ilbl">Statut</span><span className="ef-ival green">{collaborator?.status||"ACTIF"}</span></div>
+                  <div className="ef-icell"><span className="ef-ilbl">{t("matricule")}</span><span className="ef-ival">{collaborator?.matricule||"—"}</span></div>
+                  <div className="ef-icell"><span className="ef-ilbl">{t("segment")}</span><span className="ef-ival">{collaborator?.segment||"—"}</span></div>
+                  <div className="ef-icell"><span className="ef-ilbl">{t("hire_date")}</span><span className="ef-ival">{fmt(collaborator?.hireDate)}</span></div>
+                  <div className="ef-icell"><span className="ef-ilbl">{t("status")}</span><span className="ef-ival green">{collaborator?.status||"ACTIF"}</span></div>
                 </div>
               </div>
             </div>
@@ -346,20 +357,20 @@ export default function EntretienFinal({ niveau = 5 }) {
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
                   <path d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2"/>
                 </svg>
-                Résumé de l'Entretien de Décision (N4)
+                {t("decision_summary_title")}
               </div>
               <div className="ef-card-bd">
                 {resumeN4 ? (
                   <div className="ef-rrow">
-                    <div className="ef-rline"><span className="ef-rlbl">Type faute</span><span className="ef-rval">{resumeN4.typeFaute||"—"}</span></div>
-                    <div className="ef-rline"><span className="ef-rlbl">Date</span><span className="ef-rval">{fmt(resumeN4.dateEntretien||resumeN4.date)}</span></div>
-                    <div className="ef-rline"><span className="ef-rlbl">Décision</span><span className="ef-rval">{resumeN4.decision||"—"}</span></div>
+                    <div className="ef-rline"><span className="ef-rlbl">{t("fault_type_label")}</span><span className="ef-rval">{resumeN4.typeFaute||"—"}</span></div>
+                    <div className="ef-rline"><span className="ef-rlbl">{t("meeting_date_label")}</span><span className="ef-rval">{fmt(resumeN4.dateEntretien||resumeN4.date)}</span></div>
+                    <div className="ef-rline"><span className="ef-rlbl">{t("rh_decision_label")}</span><span className="ef-rval">{resumeN4.decision ? t(`decision_${resumeN4.decision}`, resumeN4.decision) : "—"}</span></div>
                     {resumeN4.justification && (
-                      <div className="ef-rline"><span className="ef-rlbl">Justif.</span><span className="ef-rval" style={{fontSize:11}}>{resumeN4.justification}</span></div>
+                      <div className="ef-rline"><span className="ef-rlbl">{t("justification")}</span><span className="ef-rval" style={{fontSize:11}}>{resumeN4.justification}</span></div>
                     )}
                   </div>
                 ) : (
-                  <div className="ef-rempty">Aucun entretien de décision trouvé</div>
+                  <div className="ef-rempty">{t("no_decision_meeting_found")}</div>
                 )}
               </div>
             </div>
@@ -390,18 +401,18 @@ export default function EntretienFinal({ niveau = 5 }) {
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                   <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
-                Formulaire
+                {t("form")}
               </div>
 
               <div className="ef-form-bd">
                 <form onSubmit={handleSubmit}>
 
                   <div className="ef-fg">
-                    <label className="ef-lbl">Type de faute <span className="req"></span></label>
+                    <label className="ef-lbl">{t("fault_type_label")} <span className="req"></span></label>
                     <div className="ef-faute-row">
                       <div className="ef-dw">
                         <input type="text" className="ef-inp"
-                          placeholder="Rechercher ou sélectionner une faute..."
+                          placeholder={t("search_or_select_fault")}
                           value={formData.typeFaute}
                           onChange={e => { setFormData(p=>({...p,typeFaute:e.target.value})); setShowDropdown(true); }}
                           onFocus={() => setShowDropdown(true)}
@@ -420,53 +431,53 @@ export default function EntretienFinal({ niveau = 5 }) {
                         )}
                       </div>
                       <button type="button" className="ef-btn-add" onClick={() => setShowDefautModal(true)}>
-                        + Ajouter Faute
+                        {t("add_fault_button")}
                       </button>
                     </div>
                   </div>
 
                     <div className="ef-fg">
-                      <label className="ef-lbl">Date entretien </label>
+                      <label className="ef-lbl">{t("meeting_date_label")}</label>
                       <input type="date" name="dateEntretien" className="ef-inp"
                         value={formData.dateEntretien} onChange={handleChange}/>
                     </div>
                      <div className="ef-fg">
-                    <label className="ef-lbl">Cause principale</label>
+                    <label className="ef-lbl">{t("main_cause_label")}</label>
                     <input type="text" name="causePrincipale" className="ef-inp"
                       value={formData.causePrincipale} onChange={handleChange}
-                      placeholder="Indiquez la cause principale" />
+                      placeholder={t("main_cause_placeholder")} />
                   </div>
 
                     <div className="ef-fg">
-                      <label className="ef-lbl">Décision RH <span className="req"></span></label>
+                      <label className="ef-lbl">{t("rh_decision_label")} <span className="req"></span></label>
                       <select name="decision" className="ef-sel"
                         value={formData.decision} onChange={handleChange}>
-                        <option value="">— Choisir —</option>
-                        {DECISIONS.map(d => <option key={d} value={d}>{d}</option>)}
+                        <option value="">{t("choose_option")}</option>
+                        {DECISIONS.map(d => <option key={d} value={d}>{t(`decision_${d}`, d)}</option>)}
                       </select>
                     </div>
 
                  
 
                   <div className="ef-fg">
-                    <label className="ef-lbl">Commentaire RH</label>
+                    <label className="ef-lbl">{t("rh_comment_label")}</label>
                     <textarea name="commentaireRH" className="ef-ta" rows={3}
                       value={formData.commentaireRH} onChange={handleChange}
-                      placeholder="Motivez la décision finale prise par les RH..."/>
+                      placeholder={t("final_decision_comment_placeholder")}/>
                   </div>
 
                   <div className="ef-actions">
                     <button type="button" className="ef-btn ef-btn-draft"
                       onClick={handleEnregistrer} disabled={savingDraft}>
-                      {savingDraft ? "Enregistrement..." : "Enregistrer Brouillon"}
+                      {savingDraft ? t("saving") : t("save_draft")}
                     </button>
                     <button type="submit" className="ef-btn ef-btn-valider" disabled={saving}>
-                      {saving ? "..." : "Valider"}
+                      {saving ? "..." : t("validate")}
                     </button>
 
                     <button type="button" className="ef-btn ef-btn-modifier"
                       onClick={handleModifier} disabled={loadingDraft}>
-                      {loadingDraft ? "..." : "Modifier"}
+                      {loadingDraft ? "..." : t("edit")}
                     </button>
                     
                   </div>
@@ -481,16 +492,16 @@ export default function EntretienFinal({ niveau = 5 }) {
       {showDefautModal && (
         <div className="ef-moverlay" onClick={() => setShowDefautModal(false)}>
           <div className="ef-modal" onClick={e => e.stopPropagation()}>
-            <h3>Ajouter un type de faute</h3>
-            <label className="ef-lbl">Nom du type de faute</label>
+            <h3>{t("add_fault_type_title")}</h3>
+            <label className="ef-lbl">{t("fault_type_name_label")}</label>
             <input className="ef-inp" style={{marginTop:6}} value={defautTypeInput}
               onChange={e => setDefautTypeInput(e.target.value)}
-              placeholder="Saisir un nouveau type de faute"
+              placeholder={t("enter_new_fault_type")}
               onKeyDown={e => e.key === "Enter" && addTypeOption()}
               autoFocus/>
             <div className="ef-modal-acts">
-              <button className="ef-mbtn-cancel" onClick={() => setShowDefautModal(false)}>Annuler</button>
-              <button className="ef-mbtn-ok" onClick={addTypeOption} disabled={!defautTypeInput.trim()}>Ajouter</button>
+              <button className="ef-mbtn-cancel" onClick={() => setShowDefautModal(false)}>{t("cancel")}</button>
+              <button className="ef-mbtn-ok" onClick={addTypeOption} disabled={!defautTypeInput.trim()}>{t("add")}</button>
             </div>
           </div>
         </div>

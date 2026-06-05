@@ -1,5 +1,7 @@
 package com.polytech.paqbackend.service;
 
+import com.polytech.paqbackend.entity.User;
+import com.polytech.paqbackend.repository.UserRepository;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,10 +24,18 @@ public class EmailService {
     @Autowired
     private NotificationService notificationService;
 
-
+    @Autowired
+    private UserRepository userRepository;  // ✅ Ajouter pour résoudre login à partir de l'email
 
     @Value("${spring.mail.username}")
     private String fromEmail;
+
+    // ✅ Méthode utilitaire pour obtenir le login à partir de l'email
+    private String getLoginFromEmail(String email) {
+        if (email == null || email.isBlank()) return null;
+        User user = userRepository.findByEmail(email);
+        return user != null ? user.getLogin() : null;
+    }
 
     public void sendPasswordResetRequestToAdmin(String userEmail, String userLogin, String userName) {
         SimpleMailMessage message = new SimpleMailMessage();
@@ -45,6 +55,17 @@ public class EmailService {
                 userName, userLogin, userEmail
         ));
         mailSender.send(message);
+
+        // ✅ Envoyer une notification système à l'admin (utiliser le login, pas l'email)
+        String adminLogin = getLoginFromEmail("admin@example.com");
+        if (adminLogin != null) {
+            notificationService.envoyerNotification(
+                    adminLogin,
+                    "📧 Demande de réinitialisation",
+                    "L'utilisateur " + userName + " (" + userLogin + ") a demandé une réinitialisation de mot de passe",
+                    "INFO"
+            );
+        }
     }
 
     public void sendNewPasswordToUser(String userEmail, String userLogin, String newPassword) {
@@ -64,22 +85,22 @@ public class EmailService {
                 userLogin, userLogin, newPassword
         ));
         mailSender.send(message);
+
+        // ✅ Envoyer une notification système à l'utilisateur (utiliser le LOGIN)
+        notificationService.envoyerNotification(
+                userLogin,  // ← LOGIN, pas email!
+                "🔐 Mot de passe réinitialisé",
+                "Votre mot de passe a été réinitialisé par l'administrateur.",
+                "INFO"
+        );
     }
 
     private String[] getAdminEmails() {
-        // Récupérer les emails des administrateurs depuis la base de données
-        // Cette méthode peut être améliorée pour récupérer dynamiquement les emails des admins
         return new String[]{"admin@example.com"};
     }
 
-
     /**
-     * Envoie un email via Gmail SMTP
-     *
-     * @param expediteurEmail  email de l'utilisateur connecté (expéditeur réel)
-     * @param destinataireEmail email du destinataire
-     * @param sujet            objet de l'email
-     * @param contenuHtml      corps HTML de l'email
+     * Envoie un email via Gmail SMTP avec notification système pour l'expéditeur
      */
     public void sendEmail(String expediteurEmail,
                           String destinataireEmail,
@@ -88,12 +109,16 @@ public class EmailService {
 
         if (mailSender == null) {
             log.error("JavaMailSender n'est pas configuré");
-            notificationService.envoyerNotification(
-                    expediteurEmail,
-                    "❌ Erreur d'envoi email",
-                    "Service d'email non configuré",
-                    "ERROR"
-            );
+            // ✅ Utiliser le login de l'expéditeur pour la notification
+            String expediteurLogin = getLoginFromEmail(expediteurEmail);
+            if (expediteurLogin != null) {
+                notificationService.envoyerNotification(
+                        expediteurLogin,
+                        "❌ Erreur d'envoi email",
+                        "Service d'email non configuré",
+                        "ERROR"
+                );
+            }
             throw new RuntimeException("Service d'email non configuré");
         }
 
@@ -104,52 +129,50 @@ public class EmailService {
             helper.setTo(destinataireEmail);
             helper.setSubject(sujet);
             helper.setText(contenuHtml, true);
-            helper.setFrom("paqleoni@gmail.com"); // Email expéditeur fixe
+            helper.setFrom("paqleoni@gmail.com");
 
             mailSender.send(mimeMessage);
 
             log.info("Email envoyé avec succès à {} par {}", destinataireEmail, expediteurEmail);
 
-            // Notifier l'expéditeur que l'email a été envoyé
-            notificationService.envoyerNotification(
-                    expediteurEmail,
-                    "✅ Email envoyé",
-                    "Votre email à " + destinataireEmail + " a été envoyé avec succès",
-                    "SUCCESS"
-            );
+            // ✅ Notifier l'expéditeur (utiliser son LOGIN, pas son email)
+            String expediteurLogin = getLoginFromEmail(expediteurEmail);
+            if (expediteurLogin != null) {
+                notificationService.envoyerNotification(
+                        expediteurLogin,
+                        "✅ Email envoyé",
+                        "Votre email à " + destinataireEmail + " a été envoyé avec succès",
+                        "SUCCESS"
+                );
+            }
 
         } catch (Exception e) {
             log.error("Échec envoi email vers {}: {}", destinataireEmail, e.getMessage());
 
-            // Notifier l'expéditeur de l'échec
-            notificationService.envoyerNotification(
-                    expediteurEmail,
-                    "❌ Erreur d'envoi email",
-                    "L'email à " + destinataireEmail + " n'a pas pu être envoyé : " + e.getMessage(),
-                    "ERROR"
-            );
+            // ✅ Notifier l'expéditeur de l'échec (utiliser son LOGIN)
+            String expediteurLogin = getLoginFromEmail(expediteurEmail);
+            if (expediteurLogin != null) {
+                notificationService.envoyerNotification(
+                        expediteurLogin,
+                        "❌ Erreur d'envoi email",
+                        "L'email à " + destinataireEmail + " n'a pas pu être envoyé : " + e.getMessage(),
+                        "ERROR"
+                );
+            }
             throw new RuntimeException("Erreur lors de l'envoi de l'email: " + e.getMessage(), e);
         }
     }
 
-    // ─── Templates d'email pour les entretiens ─────────────────────────────────
-
     /**
-     * Envoie un email de notification après validation d'entretien.
-     * Utilisé par EntretienExplicatifService pour chaque type d'entretien.
-     *
-     * @param expediteurEmail email de l'utilisateur qui valide
-     * @param destinataireEmail destinataire (QM, SGL, HP, RH...)
-     * @param collaborateurNom nom du collaborateur concerné
-     * @param typeEntretien EXPLICATIF | ACCORD | MESURE | DECISION
-     * @param matricule matricule pour le lien dans l'email
+     * Envoie un email de notification après validation d'entretien
+     * avec notification système pour le destinataire
      */
     public void envoyerEmailValidationEntretien(String expediteurEmail,
                                                 String destinataireEmail,
                                                 String collaborateurNom,
                                                 String typeEntretien,
                                                 String matricule) {
-        // Ne pas envoyer si destinataire est null
+
         if (destinataireEmail == null || destinataireEmail.isBlank()) {
             log.warn("Destinataire email null pour entretien {} de {}", typeEntretien, matricule);
             return;
@@ -158,9 +181,41 @@ public class EmailService {
         String sujet = String.format("[PAQ] Entretien %s validé - %s", typeEntretien, collaborateurNom);
         String html = buildEmailTemplate(collaborateurNom, typeEntretien, matricule);
         sendEmail(expediteurEmail, destinataireEmail, sujet, html);
+
+        // ✅ ENVOYER UNE NOTIFICATION SYSTÈME AU DESTINATAIRE (le plus important!)
+        String destinataireLogin = getLoginFromEmail(destinataireEmail);
+        if (destinataireLogin != null) {
+            String titreNotif = String.format("📋 Entretien %s - %s", typeEntretien, collaborateurNom);
+            String messageNotif = String.format(
+                    "Un entretien %s a été validé pour le collaborateur %s. Veuillez vous connecter pour consulter le dossier.",
+                    typeEntretien, collaborateurNom
+            );
+
+            notificationService.envoyerNotification(
+                    destinataireLogin,  // ← LOGIN du destinataire (QM, SGL, HP, etc.)
+                    titreNotif,
+                    messageNotif,
+                    "ENTRETIEN",
+                    matricule,  // matriculeCollaborateur
+                    typeEntretien
+            );
+            log.info("Notification système envoyée à l'utilisateur: {}", destinataireLogin);
+        }
+
+        // ✅ Notifier aussi l'expéditeur que l'email a été envoyé
+        String expediteurLogin = getLoginFromEmail(expediteurEmail);
+        if (expediteurLogin != null) {
+            notificationService.envoyerNotification(
+                    expediteurLogin,
+                    "📧 Email envoyé",
+                    "L'email de validation d'entretien a été envoyé à " + destinataireEmail,
+                    "INFO",
+                    matricule,
+                    typeEntretien
+            );
+        }
     }
 
-    /** Génère le corps HTML de l'email */
     private String buildEmailTemplate(String collaborateurNom, String typeEntretien, String matricule) {
         return String.format("""
             <!DOCTYPE html>
@@ -186,7 +241,7 @@ public class EmailService {
                     <tr style="background: #f8f9fa;">
                       <td style="padding: 10px; border: 1px solid #dee2e6;">Type d'entretien</td>
                       <td style="padding: 10px; border: 1px solid #dee2e6;"><strong>%s</strong></td>
-                    </tr>
+                     </tr>
                   </table>
                   <p>Veuillez vous connecter au système PAQ pour prendre connaissance du dossier.</p>
                 </div>
@@ -200,11 +255,19 @@ public class EmailService {
             """, typeEntretien, collaborateurNom, matricule, typeEntretien);
     }
 
-    /**
-     * Envoi d'email simple (sans template d'entretien)
-     */
     public void envoyerEmailSimple(String destinataireEmail, String sujet, String contenuHtml) {
         sendEmail("system@paq.com", destinataireEmail, sujet, contenuHtml);
+
+        // ✅ Notifier le destinataire dans le système
+        String destinataireLogin = getLoginFromEmail(destinataireEmail);
+        if (destinataireLogin != null) {
+            notificationService.envoyerNotification(
+                    destinataireLogin,
+                    sujet,
+                    "Un nouvel email vous a été envoyé",
+                    "INFO"
+            );
+        }
     }
 
     public void sendDefautGraveNotificationToSGL(
@@ -233,10 +296,22 @@ public class EmailService {
             );
             mailSender.send(message);
             log.info("Notification défaut grave envoyée au SGL {} pour le matricule {}", sglEmail, matricule);
+
+            // ✅ Envoyer une notification système au SGL
+            String sglLogin = getLoginFromEmail(sglEmail);
+            if (sglLogin != null) {
+                notificationService.envoyerNotification(
+                        sglLogin,
+                        "⚠️ Défaut grave - " + collaborateurNom,
+                        "Un défaut grave de type '" + typeFaute + "' a été détecté. Votre participation à l'entretien explicatif est requise.",
+                        "DEFUT_GRAVE",
+                        matricule,
+                        "EXPLICATIF"
+                );
+            }
+
         } catch (Exception e) {
             log.error("Erreur envoi mail défaut grave au SGL {}: {}", sglEmail, e.getMessage());
         }
     }
-
-
 }

@@ -14,17 +14,6 @@ import java.util.Optional;
 @Repository
 public interface CollaboratorRepository extends JpaRepository<Collaborator, String> {
 
-    @Query("SELECT c FROM Collaborator c " +
-            "WHERE c.niveau = :niveau " +
-            "AND c.actif = :actif " +
-            "AND c.depart = false " +
-            "AND c.archived = false " +
-            "AND c.hireDate <= :date")
-    List<Collaborator> findAllByNiveauAndActifAndHireDateBefore(
-            @Param("niveau") int niveau,
-            @Param("actif") boolean actif,
-            @Param("date") LocalDate date
-    );
     boolean existsByMatricule(String matricule);
 
     long countByActifTrue();

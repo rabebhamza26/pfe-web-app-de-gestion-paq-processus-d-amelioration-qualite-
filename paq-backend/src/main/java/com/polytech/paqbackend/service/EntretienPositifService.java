@@ -99,83 +99,53 @@ public class EntretienPositifService {
         }
     }
 
-    // ── Collaborateurs sans faute (Niveau 0 depuis 6 mois) ─────────────────────
+    // ── Collaborateurs sans faute ──────────────────────────────────────────────
 
-    /**
-     * Récupère les collaborateurs qui sont au niveau 0 depuis 6 mois
-     * Conditions:
-     * 1. Le collaborateur a le niveau 0
-     * 2. Le collaborateur a une ancienneté >= 6 mois
-     * 3. Le collaborateur n'a pas de PAQ actif
-     * 4. Le dernier PAQ (s'il existe) date de plus de 6 mois
-     */
     public List<CollaborateurSansFauteDto> getCollaborateursSansFaute() {
-        LocalDate sixMoisAvant = LocalDate.now().minusMonths(6);
-
-        // Récupérer tous les collaborateurs actifs avec niveau 0
-        List<Collaborator> allNiveauZero = collaboratorRepository
-                .findAllByNiveauAndActifAndHireDateBefore(0, true, sixMoisAvant);
-
-        if (allNiveauZero == null || allNiveauZero.isEmpty()) {
-            return new ArrayList<>();
-        }
+        LocalDate now = LocalDate.now();
+        List<Collaborator> actifs = collaboratorRepository.findByDepartFalseAndArchivedFalse();
 
         List<CollaborateurSansFauteDto> result = new ArrayList<>();
 
-        for (Collaborator c : allNiveauZero) {
-            // Vérifier si le collaborateur peut être inclus
-            if (estEligiblePourEntretienPositif(c)) {
-                CollaborateurSansFauteDto dto = new CollaborateurSansFauteDto();
-                dto.setMatricule(c.getMatricule());
-                dto.setNom(c.getName());
-                dto.setPrenom(c.getPrenom());
-                dto.setSegment(c.getSegment());
-                // Calculer les jours depuis l'embauche
-                long jours = ChronoUnit.DAYS.between(c.getHireDate(), LocalDate.now());
-                dto.setJoursSansFaute((int) jours);
-                result.add(dto);
+        for (Collaborator c : actifs) {
+            try {
+                long joursSansFaute = 0;
+
+                Optional<PaqDossier> paqOpt = paqRepository
+                        .findFirstByCollaboratorMatriculeAndActifTrueAndArchivedFalse(c.getMatricule());
+
+                if (paqOpt.isPresent()) {
+                    PaqDossier paq = paqOpt.get();
+                    LocalDate derniereFaute = paq.getDerniereFaute();
+
+                    if (derniereFaute != null) {
+                        joursSansFaute = ChronoUnit.DAYS.between(derniereFaute, now);
+                    } else {
+                        LocalDate dateDebut = paq.getDateCreation() != null ? paq.getDateCreation() : c.getHireDate();
+                        joursSansFaute = ChronoUnit.DAYS.between(dateDebut, now);
+                    }
+                } else {
+                    joursSansFaute = ChronoUnit.DAYS.between(c.getHireDate(), now);
+                }
+
+                if (joursSansFaute >= 180) {
+                    CollaborateurSansFauteDto dto = new CollaborateurSansFauteDto(
+                            c.getMatricule(),
+                            c.getName(),
+                            c.getPrenom() != null ? c.getPrenom() : "",
+                            c.getSegment(),
+                            c.getHireDate(),
+                            null,
+                            joursSansFaute
+                    );
+                    result.add(dto);
+                }
+            } catch (Exception e) {
+                System.err.println("Erreur pour collaborateur " + c.getMatricule() + ": " + e.getMessage());
             }
         }
 
         return result;
-    }
-
-    /**
-     * Vérifie si un collaborateur est éligible à l'entretien positif
-     * Conditions:
-     * 1. Niveau = 0
-     * 2. Pas de PAQ actif
-     * 3. Si un PAQ existe, il doit être archivé depuis au moins 6 mois
-     * 4. Ancienneté >= 6 mois
-     */
-    private boolean estEligiblePourEntretienPositif(Collaborator collaborator) {
-        // Vérifier l'ancienneté minimale de 6 mois
-        if (collaborator.getHireDate() == null) return false;
-        if (collaborator.getHireDate().plusMonths(6).isAfter(LocalDate.now())) {
-            return false; // Moins de 6 mois d'ancienneté
-        }
-
-        // Vérifier si un PAQ actif existe
-        Optional<PaqDossier> activePaq = paqRepository
-                .findFirstByCollaboratorMatriculeAndActifTrueAndArchivedFalse(collaborator.getMatricule());
-
-        if (activePaq.isPresent()) {
-            return false; // PAQ actif présent
-        }
-
-        // Vérifier l'historique des PAQ
-        List<PaqDossier> allPaqs = paqRepository
-                .findAllByCollaboratorMatriculeOrderByDateCreationDesc(collaborator.getMatricule());
-
-        if (!allPaqs.isEmpty()) {
-            PaqDossier dernierPaq = allPaqs.get(0);
-            // Si le dernier PAQ a été créé il y a moins de 6 mois, pas éligible
-            if (dernierPaq.getDateCreation().plusMonths(6).isAfter(LocalDate.now())) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     // Récupérer les collaborateurs sans faute pour un SL spécifique (basé sur ses segments)
@@ -233,65 +203,54 @@ public class EntretienPositifService {
         return segments;
     }
 
-    /**
-     * Envoi automatique programmé - Pour test toutes les minutes
-     * En production: @Scheduled(cron = "0 0 8 * * ?") pour tous les jours à 8h
-     * L'email est envoyé uniquement si des collaborateurs niveau 0 avec 6 mois d'ancienneté existent
-     */
-    //@Scheduled(fixedDelay = 60000)  // Toutes les minutes pour test
-    // @Scheduled(cron = "0 0 8 * * ?")  // Décommenter pour production (tous les jours à 8h)
+
+     @Scheduled(cron = "0 0 8 * * ?")  // Tous les jours à 8h00 du matin
+
     @Transactional
     public void envoyerAutomatiquementAuxSL() {
-        System.out.println("=== [EntretienPositif] Vérification des collaborateurs niveau 0 depuis 6 mois ===");
+        System.out.println("=== [TEST] Envoi automatique des entretiens positifs aux SL ===");
         System.out.println("Timestamp: " + LocalDateTime.now());
+        System.out.println("MailSender configuré: " + (mailSender != null));
 
         if (mailSender == null) {
-            System.err.println("❌ MailSender non configuré! Vérifiez votre configuration SMTP.");
+            System.err.println(" MailSender non configuré! Vérifiez votre configuration SMTP.");
             return;
         }
 
         List<User> slUsers = userRepository.findAllSL();
+
         System.out.println("Nombre de SL trouvés: " + (slUsers != null ? slUsers.size() : 0));
 
         if (slUsers == null || slUsers.isEmpty()) {
-            System.out.println("⚠️ Aucun utilisateur avec rôle SL trouvé");
+            System.out.println(" Aucun utilisateur avec rôle SL trouvé");
             return;
         }
 
         int totalEnvoyes = 0;
-        LocalDate aujourdhui = LocalDate.now();
 
         for (User sl : slUsers) {
             System.out.println("\n--- Traitement SL: " + sl.getLogin() + " ---");
             System.out.println("Email SL: " + sl.getEmail());
 
             if (sl.getEmail() == null || sl.getEmail().isEmpty()) {
-                System.out.println("⚠️ SL sans email: " + sl.getLogin());
+                System.out.println(" SL sans email: " + sl.getLogin());
                 continue;
             }
 
-            // Récupérer les collaborateurs éligibles pour ce SL
             List<CollaborateurSansFauteDto> collabPourSL = getCollaborateursSansFauteParSl(sl);
-
-            System.out.println("Collaborateurs éligibles (niveau 0 + 6 mois ancienneté): " + collabPourSL.size());
-
-            // Afficher les détails pour déboguer
-            for (CollaborateurSansFauteDto c : collabPourSL) {
-                System.out.println("  - " + c.getNom() + " " + c.getPrenom() + " (" + c.getMatricule() + ") - " + c.getJoursSansFaute() + " jours");
-            }
+            System.out.println("Collaborateurs éligibles trouvés: " + collabPourSL.size());
 
             if (!collabPourSL.isEmpty()) {
                 try {
                     boolean emailEnvoye = envoyerEmailAutomatique(sl, collabPourSL);
                     if (emailEnvoye) {
                         totalEnvoyes++;
-                        System.out.println("✅ Email envoyé avec succès à " + sl.getEmail());
+                        System.out.println(" Email envoyé avec succès à " + sl.getEmail());
 
-                        // Enregistrer l'envoi
                         EntretienPositif entretien = new EntretienPositif();
                         entretien.setSlDestinataire(sl.getEmail());
-                        entretien.setDateEnvoi(aujourdhui);
-                        entretien.setNote("Envoi automatique - Collaborateurs niveau 0 depuis 6 mois");
+                        entretien.setDateEnvoi(LocalDate.now());
+                        entretien.setNote("Envoi automatique - Félicitations aux collaborateurs");
                         entretien.setCreatedAt(LocalDateTime.now());
                         entretien.setMatriculeCollaborateur(
                                 collabPourSL.stream()
@@ -307,7 +266,7 @@ public class EntretienPositifService {
                     e.printStackTrace();
                 }
             } else {
-                System.out.println("ℹ️ Aucun collaborateur éligible (niveau 0 depuis 6 mois) pour ce SL");
+                System.out.println("⚠️ Aucun collaborateur éligible pour ce SL");
             }
         }
 
@@ -328,7 +287,7 @@ public class EntretienPositifService {
 
         helper.setTo(sl.getEmail());
         helper.setFrom(fromEmail != null ? fromEmail : "paq@leoni.com");
-        helper.setSubject("✨ Entretien Positif – Collaborateurs niveau 0 depuis 6 mois – " + now.format(MOIS_FORMATTER));
+        helper.setSubject(" Entretien Positif – Collaborateurs à féliciter – " + now.format(MOIS_FORMATTER));
 
         String htmlContent = buildEmailContent(sl, collaborateurs, now);
         helper.setText(htmlContent, true);
@@ -376,42 +335,43 @@ public class EntretienPositifService {
             <body>
                 <div class='email-container'>
                     <div class='email-header'>
-                        <h1>✨ FÉLICITATIONS ! ✨</h1>
+                        <h1>FÉLICITATIONS ! </h1>
                         <p>Entretien Positif - %s</p>
                     </div>
                     <div class='email-body'>
                         <p>Bonjour <strong>%s</strong>,</p>
                         <div class='email-message'>
-                            <p>🎉 FÉLICITEZ VOS COLLABORATEURS ! 🎉</p>
+                            <p>FÉLICITER SES COLLABORATEURS ! </p>
                         </div>
                         <p>Nous avons le plaisir de vous informer que <strong>%d collaborateur(s)</strong> 
-                        de %s sont au <strong>niveau 0 depuis plus de 6 mois</strong> sans aucune faute.</p>
+                        de %s ont accompli <strong>plus de 6 mois sans aucune faute</strong>.</p>
                         
                         <p><strong>Liste des collaborateurs à féliciter :</strong></p>
                         <table class='email-table'>
-                            <thead><tr><th>Nom</th><th>Prénom</th><th>Matricule</th><th>Ancienneté</th></tr></thead>
+                            <thead><tr><th>Nom</th><th>Prénom</th><th>Matricule</th><th>Jours sans faute</th></tr></thead>
                             <tbody>
             """,
                 dateEnvoi.format(DATE_FORMATTER),
                 sl.getNomUtilisateur() != null ? sl.getNomUtilisateur() : sl.getLogin(),
                 collaborateurs.size(),
-                scope
+                scope,
+                collaborateurs.size(),
+                moyenneJours
         ));
 
         for (CollaborateurSansFauteDto c : collaborateurs) {
-            String anciennete = formatAnciennete(c.getJoursSansFaute());
             htmlBuilder.append(String.format("""
                                 <tr>
                                     <td>%s</td>
                                     <td>%s</td>
                                     <td class='matricule'>%s</td>
-                                    <td class='jours'>%s</td>
+                                    <td class='jours'>%d j</td>
                                 </tr>
                             """,
                     escapeHtml(c.getNom() != null ? c.getNom() : ""),
                     escapeHtml(c.getPrenom() != null ? c.getPrenom() : ""),
                     escapeHtml(c.getMatricule()),
-                    anciennete
+                    c.getJoursSansFaute()
             ));
         }
 
@@ -419,8 +379,8 @@ public class EntretienPositifService {
                             </tbody>
                         </table>
                         <div class='email-footer'>
-                            <p>ℹ Cet email est envoyé automatiquement par le système PAQ.</p>
-                            <p>💪 Félicitez et valorisez vos collaborateurs pour leur engagement !</p>
+                            <p>ℹCet email est envoyé automatiquement par le système PAQ.</p>
+                            <p> Félicitez et valorisez vos collaborateurs pour leur excellence !</p>
                             <p>&copy; 2026 PAQ System - LEONI</p>
                         </div>
                     </div>
@@ -430,20 +390,6 @@ public class EntretienPositifService {
         """);
 
         return htmlBuilder.toString();
-    }
-
-    private String formatAnciennete(long jours) {
-        long mois = jours / 30;
-        long annees = mois / 12;
-        mois = mois % 12;
-
-        if (annees > 0) {
-            return String.format("%d an%s %d mois", annees, annees > 1 ? "s" : "", mois);
-        } else if (mois > 0) {
-            return String.format("%d mois", mois);
-        } else {
-            return String.format("%d jours", jours);
-        }
     }
 
     private String getScopeForUser(User user) {
@@ -542,7 +488,7 @@ public class EntretienPositifService {
         PdfDocument pdf = new PdfDocument(writer);
         Document document = new Document(pdf);
 
-        document.add(new Paragraph("✨ FÉLICITATIONS - COLLABORATEURS NIVEAU 0 DEPUIS 6 MOIS ✨")
+        document.add(new Paragraph("✨ FÉLICITATIONS - COLLABORATEURS SANS FAUTE ✨")
                 .setBold().setFontSize(18).setFontColor(ColorConstants.GREEN));
         document.add(new Paragraph("Généré le : " + LocalDate.now().format(DATE_FORMATTER))
                 .setFontSize(10));
@@ -550,7 +496,7 @@ public class EntretienPositifService {
         Table table = new Table(new float[]{3, 3, 3, 2});
         table.setWidth(UnitValue.createPercentValue(100));
 
-        String[] headers = {"Nom", "Prénom", "Matricule", "Ancienneté"};
+        String[] headers = {"Nom", "Prénom", "Matricule", "Jours sans faute"};
         for (String header : headers) {
             table.addHeaderCell(new Cell()
                     .add(new Paragraph(header))
@@ -559,11 +505,10 @@ public class EntretienPositifService {
         }
 
         for (CollaborateurSansFauteDto c : list) {
-            String anciennete = formatAnciennete(c.getJoursSansFaute());
             table.addCell(new Cell().add(new Paragraph(c.getNom() != null ? c.getNom() : "")));
             table.addCell(new Cell().add(new Paragraph(c.getPrenom() != null ? c.getPrenom() : "")));
             table.addCell(new Cell().add(new Paragraph(c.getMatricule() != null ? c.getMatricule() : "")));
-            table.addCell(new Cell().add(new Paragraph(anciennete)));
+            table.addCell(new Cell().add(new Paragraph(String.valueOf(c.getJoursSansFaute()))));
         }
 
         document.add(table);

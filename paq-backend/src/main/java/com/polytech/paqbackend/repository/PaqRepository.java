@@ -20,7 +20,7 @@ public interface PaqRepository extends JpaRepository<PaqDossier, Long> {
     List<PaqDossier> findAllByCollaboratorMatriculeOrderByDateCreationDesc(String matricule);
 
     List<PaqDossier> findByActifTrueAndArchivedFalse();
-    Optional<PaqDossier> findFirstByCollaboratorMatriculeOrderByDateCreationDesc(String matricule);
+
 
     boolean existsByCollaboratorMatriculeAndActifTrueAndArchivedFalse(String matricule);
 

@@ -31,11 +31,13 @@ function Sidebar() {
         )}
 
         {/* ✅ Notifications - visible pour tous les utilisateurs connectés */}
-        <li>
+         {isSL && (
+          <li>
           <NavLink to="/notifications">
             {t("notifications")}
           </NavLink>
         </li>
+         )}
 
          {isSL && (
         <li><NavLink to="/archive">{t("archive")}</NavLink></li>

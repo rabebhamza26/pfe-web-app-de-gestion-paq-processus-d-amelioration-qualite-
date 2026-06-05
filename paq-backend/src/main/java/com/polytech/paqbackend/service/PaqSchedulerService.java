@@ -12,8 +12,8 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import com.fasterxml.jackson.core.type.*;
-import com.fasterxml.jackson.databind.*;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.temporal.ChronoUnit;
 
@@ -88,7 +88,6 @@ public class PaqSchedulerService {
      * Crée automatiquement un nouveau PAQ tous les 6 mois pour chaque collaborateur actif
      * Vérifie tous les jours à minuit
      */
-    @Scheduled(cron = "0 0 0 * * ?")
     @Transactional
     public void createPeriodicPaq() {
         System.out.println("=== Création automatique des PAQ périodiques ===");

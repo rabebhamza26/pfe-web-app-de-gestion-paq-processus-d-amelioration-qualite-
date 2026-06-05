@@ -64,21 +64,24 @@ export default function PaqDossier() {
   };
 
   // ── Créer PAQ ─────────────────────────────────────────────────────────────
-  const createPaq = async () => {
+const createPaq = async () => {
     try {
-      setLoading(true);
-      const res = await paqService.create(matricule);
-      if (res.data) {
-        setCurrentPaq(res.data);
-        if (res.data.historique) setHistorique(JSON.parse(res.data.historique));
-        showSuccess("Dossier PAQ créé avec succès !");
-      }
+        setLoading(true);
+        const res = await paqService.create(matricule);
+        if (res.data) {
+            // Sauvegarder la date de création dans localStorage
+            localStorage.setItem(`last_paq_${matricule}`, new Date().toISOString());
+            
+            setCurrentPaq(res.data);
+            if (res.data.historique) setHistorique(JSON.parse(res.data.historique));
+            showSuccess("Dossier PAQ créé avec succès !");
+        }
     } catch (err) {
-      showError(err.response?.data?.message || "Erreur lors de la création");
+        showError(err.response?.data?.message || "Erreur lors de la création");
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-  };
+};
 
   // ── Archiver PAQ ───────────────────────────────────────────────────────────
   const archiverPaq = async () => {

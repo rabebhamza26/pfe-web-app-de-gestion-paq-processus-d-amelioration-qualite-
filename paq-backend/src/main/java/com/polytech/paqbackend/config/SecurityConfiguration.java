@@ -20,6 +20,11 @@ import java.util.List;
 
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
+/**
+ * Configuration Spring Security complète pour l'application PAQ LEONI.
+ * CORRECTIF : /api/sites et /api/plants sont PUBLICS (utilisés avant login pour la sélection du site).
+ */
+
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -49,39 +54,55 @@ public class SecurityConfiguration {
                 }))
 
                 .authorizeHttpRequests(req -> req
-                        // OPTIONS (pré-vol CORS) : TOUJOURS autorisé
+
+                        // ── OPTIONS (pré-vol CORS) : TOUJOURS autorisé ───────────────
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                         // ════════════════════════════════════════════════════════════
-                        // ENDPOINTS PUBLICS - DOIVENT ÊTRE EN PREMIER
+                        // ENDPOINTS PUBLICS  (sans JWT)
                         // ════════════════════════════════════════════════════════════
 
-                        // Auth - Complètement public
+                        // Auth publique
+                        .requestMatchers("/api/auth/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers("/api/auth/refresh-token").permitAll()
                         .requestMatchers("/api/auth/forgot-password").permitAll()
+
                         .requestMatchers("/api/auth/reset-password").permitAll()
                         .requestMatchers("/api/auth/validate-reset-token").permitAll()
 
-                        // CRITIQUE: Notifications et Collaborators - Permettre à tous (TEMPORAIRE)
-                        .requestMatchers("/api/notifications/**").permitAll()
-                        .requestMatchers("/api/notifications").permitAll()
-                        .requestMatchers("/api/notifications/count/unread").permitAll()
-                        .requestMatchers("/api/collaborators/view").permitAll()
 
-                        // Sites et Plants - Publics (utilisés avant login)
+                        // CRITIQUE : Sites & Plants doivent être publics car utilisés
+                        // AVANT la connexion (page SiteSelection → PlantSelection → Login)
                         .requestMatchers(HttpMethod.GET, "/api/sites").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/sites/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/plants").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/plants/**").permitAll()
 
+
                         // WebSocket
                         .requestMatchers("/ws/**", "/ws").permitAll()
 
-                        // Public endpoints génériques
-                        .requestMatchers("/api/public/**").permitAll()
-                        .requestMatchers("/api/users/public/**").permitAll()
-                        .requestMatchers("/api/entretiens-positifs/public/**").permitAll()
+                        // EMAILS - Accessible aux utilisateurs authentifiés
+                        // ════════════════════════════════════════════════════════════
+                        .requestMatchers(HttpMethod.GET, "/api/users/emails").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/users/sl/emails").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/users/all-emails").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/users/basic").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/users/test-auth").authenticated()
+
+                        // Emails publics (sans auth)
+                        .requestMatchers(HttpMethod.GET, "/api/users/public/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/entretiens-positifs/public/**").permitAll()
+
+                        // Users partiellement publics
+                        .requestMatchers(HttpMethod.GET, "/api/users/basic").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/users/all-emails").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/users/sl/emails").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/users/public/**").permitAll()
+
+                        // Entretiens positifs email public
+                        .requestMatchers(HttpMethod.GET, "/api/entretiens-positifs/public/**").permitAll()
 
                         // Swagger
                         .requestMatchers(
@@ -94,32 +115,27 @@ public class SecurityConfiguration {
                         // ADMIN SEULEMENT
                         // ════════════════════════════════════════════════════════════
                         .requestMatchers("/api/auth/admin/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/users/{id}").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/users/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/users/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET,    "/api/users").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET,    "/api/users/{id}").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST,   "/api/users/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT,    "/api/users/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, "/api/users/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/sites/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/sites/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH,  "/api/users/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST,   "/api/sites/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT,    "/api/sites/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/sites/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/plants/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/plants/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST,   "/api/plants/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT,    "/api/plants/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/plants/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/segments/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/segments/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST,   "/api/segments/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT,    "/api/segments/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/segments/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/api/users/*/reset-password").hasRole("ADMIN")
 
-                        // Emails - Accessible aux utilisateurs authentifiés
-                        .requestMatchers(HttpMethod.GET, "/api/users/emails").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/users/sl/emails").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/users/all-emails").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/users/basic").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/users/test-auth").authenticated()
 
                         // ════════════════════════════════════════════════════════════
-                        // TOUT LE RESTE : authentifié
+                        // TOUT LE RESTE : authentifié (JWT valide)
+                        // Les permissions fines sont dans les @PreAuthorize des controllers
                         // ════════════════════════════════════════════════════════════
                         .anyRequest().authenticated()
                 )

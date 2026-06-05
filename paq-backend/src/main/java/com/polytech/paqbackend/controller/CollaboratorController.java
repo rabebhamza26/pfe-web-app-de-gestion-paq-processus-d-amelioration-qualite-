@@ -1,10 +1,8 @@
 package com.polytech.paqbackend.controller;
 
 import com.polytech.paqbackend.dto.CollaborateurDTO;
-import com.polytech.paqbackend.entity.PaqDossier;
 import com.polytech.paqbackend.entity.User;
 import com.polytech.paqbackend.repository.CollaboratorRepository;
-import com.polytech.paqbackend.repository.PaqRepository;
 import com.polytech.paqbackend.repository.UserRepository;
 import com.polytech.paqbackend.service.CollaboratorService;
 import com.polytech.paqbackend.entity.Collaborator;
@@ -16,14 +14,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/collaborators")
 public class CollaboratorController {
-    @Autowired private PaqRepository paqRepository;
 
     @Autowired private CollaboratorRepository repo;
     @Autowired private CollaboratorService collaboratorService;
@@ -186,73 +182,40 @@ public class CollaboratorController {
     // Retourne les collaborateurs selon le périmètre du user
     // ET le site/plant sélectionné dans l'interface.
     // =========================================================
-    // Dans la méthode getAll, ajoutez ces informations pour chaque collaborateur
     @GetMapping("/view")
-    @PreAuthorize("isAuthenticated()")
-
+    @PreAuthorize("hasAuthority('collaborateur:read')")
     public ResponseEntity<List<CollaborateurDTO>> getAll(
             @RequestParam(required = false) Long siteId,
             @RequestParam(required = false) Long plantId) {
         try {
             User currentUser = getCurrentUser();
+
             if (currentUser == null) {
+                System.err.println("[CollaboratorController] Utilisateur non trouvé dans le SecurityContext");
                 return ResponseEntity.ok(new ArrayList<>());
             }
 
             List<String> segmentFilter = resolveSegmentFilter(currentUser, siteId, plantId);
+
             List<CollaborateurDTO> collaborators;
 
-            if (segmentFilter == null || segmentFilter.isEmpty()) {
+            if (segmentFilter == null) {
+                // ADMIN sans filtre : tout afficher
                 collaborators = repo.getAllWithPaq();
+                System.out.println("[CollaboratorController] ADMIN (sans filtre) : " + collaborators.size() + " collaborateurs");
+            } else if (segmentFilter.isEmpty()) {
+                System.out.println("[CollaboratorController] Aucun segment accessible → liste vide");
+                collaborators = new ArrayList<>();
             } else {
                 collaborators = repo.getCollaboratorsBySegments(segmentFilter);
-            }
-
-            // Enrichir les DTOs avec les informations d'éligibilité PAQ
-            for (CollaborateurDTO dto : collaborators) {
-                enrichirDtoAvecEligibilitePaq(dto);
+                System.out.println("[CollaboratorController] " + collaborators.size()
+                        + " collaborateurs pour segments=" + segmentFilter);
             }
 
             return ResponseEntity.ok(collaborators);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    private void enrichirDtoAvecEligibilitePaq(CollaborateurDTO dto) {
-        // Vérifier si un PAQ actif existe
-        Optional<PaqDossier> activePaq = paqRepository.findFirstByCollaboratorMatriculeAndActifTrueAndArchivedFalse(dto.getMatricule());
-
-        boolean hasActivePaq = activePaq.isPresent();
-        dto.setHasActivePaq(hasActivePaq);
-
-        if (!hasActivePaq) {
-            // Vérifier si le collaborateur peut créer un nouveau PAQ
-            // Premier PAQ : toujours possible (pas besoin d'attendre)
-            // PAQ suivant : seulement après 6 mois depuis le dernier PAQ
-            List<PaqDossier> allPaqs = paqRepository.findAllByCollaboratorMatriculeOrderByDateCreationDesc(dto.getMatricule());
-
-            if (allPaqs.isEmpty()) {
-                // Premier PAQ : toujours possible
-                dto.setPeutCreerPaq(true);
-                dto.setProchainPaqDate(null);
-            } else {
-                // Vérifier si 6 mois sont passés depuis le dernier PAQ
-                LocalDate dernierPaqDate = allPaqs.get(0).getDateCreation();
-                LocalDate prochainPaqDate = dernierPaqDate.plusMonths(6);
-
-                if (LocalDate.now().isAfter(prochainPaqDate) || LocalDate.now().isEqual(prochainPaqDate)) {
-                    dto.setPeutCreerPaq(true);
-                    dto.setProchainPaqDate(null);
-                } else {
-                    dto.setPeutCreerPaq(false);
-                    dto.setProchainPaqDate(prochainPaqDate);
-                }
-            }
-        } else {
-            dto.setPeutCreerPaq(false);
-            dto.setProchainPaqDate(null);
         }
     }
 
