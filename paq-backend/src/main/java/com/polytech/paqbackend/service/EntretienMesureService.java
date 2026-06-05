@@ -422,6 +422,7 @@ public class EntretienMesureService {
                     dto.getTypeFaute() != null ? dto.getTypeFaute() : "Non spécifié",
                     dateEntretienStr);
 
+
             emailService.sendEmail(expediteur, destinataire, sujet, htmlContent);
             log.info("✅ Email convocation mesure envoyé à {} pour {}", destinataire, matricule);
         } catch (Exception e) {

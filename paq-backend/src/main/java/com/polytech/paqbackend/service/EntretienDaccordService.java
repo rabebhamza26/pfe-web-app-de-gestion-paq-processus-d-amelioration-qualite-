@@ -281,6 +281,7 @@ public class EntretienDaccordService {
         try {
             String sujet = String.format("[PAQ] Entretien d'accord  - %s", nomCollab);
             String htmlContent = buildEmailConvocationContent(nomCollab, matricule, dto);
+
             emailService.sendEmail(expediteur, destinataire, sujet, htmlContent);
             log.info("Email  envoyé à {} pour {}", destinataire, matricule);
         } catch (Exception e) {

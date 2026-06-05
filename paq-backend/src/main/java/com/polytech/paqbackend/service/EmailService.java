@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -30,11 +31,28 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String fromEmail;
 
-    // ✅ Méthode utilitaire pour obtenir le login à partir de l'email
     private String getLoginFromEmail(String email) {
         if (email == null || email.isBlank()) return null;
         User user = userRepository.findByEmail(email);
         return user != null ? user.getLogin() : null;
+    }
+
+    private String getCurrentUserLogin() {
+        try {
+            org.springframework.security.core.Authentication auth =
+                    SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName())) {
+                String principal = auth.getName();
+                User user = userRepository.findByEmailOrLogin(principal);
+                if (user != null && user.getLogin() != null) {
+                    return user.getLogin();
+                }
+                return principal;
+            }
+        } catch (Exception e) {
+            log.error("Erreur récupération utilisateur courant: {}", e.getMessage());
+        }
+        return null;
     }
 
     public void sendPasswordResetRequestToAdmin(String userEmail, String userLogin, String userName) {
@@ -109,8 +127,7 @@ public class EmailService {
 
         if (mailSender == null) {
             log.error("JavaMailSender n'est pas configuré");
-            // ✅ Utiliser le login de l'expéditeur pour la notification
-            String expediteurLogin = getLoginFromEmail(expediteurEmail);
+            String expediteurLogin = getCurrentUserLogin();
             if (expediteurLogin != null) {
                 notificationService.envoyerNotification(
                         expediteurLogin,
@@ -135,8 +152,8 @@ public class EmailService {
 
             log.info("Email envoyé avec succès à {} par {}", destinataireEmail, expediteurEmail);
 
-            // ✅ Notifier l'expéditeur (utiliser son LOGIN, pas son email)
-            String expediteurLogin = getLoginFromEmail(expediteurEmail);
+            // ✅ NOTIFICATION POUR L'EXPÉDITEUR - Utiliser l'utilisateur connecté
+            String expediteurLogin = getCurrentUserLogin();
             if (expediteurLogin != null) {
                 notificationService.envoyerNotification(
                         expediteurLogin,
@@ -144,13 +161,16 @@ public class EmailService {
                         "Votre email à " + destinataireEmail + " a été envoyé avec succès",
                         "SUCCESS"
                 );
+                log.info("✅ Notification envoyée à l'expéditeur: {}", expediteurLogin);
+            } else {
+                log.warn("⚠️ Impossible de trouver le login de l'expéditeur pour la notification");
             }
 
         } catch (Exception e) {
             log.error("Échec envoi email vers {}: {}", destinataireEmail, e.getMessage());
 
-            // ✅ Notifier l'expéditeur de l'échec (utiliser son LOGIN)
-            String expediteurLogin = getLoginFromEmail(expediteurEmail);
+            // ✅ NOTIFICATION D'ERREUR POUR L'EXPÉDITEUR
+            String expediteurLogin = getCurrentUserLogin();
             if (expediteurLogin != null) {
                 notificationService.envoyerNotification(
                         expediteurLogin,
@@ -162,7 +182,6 @@ public class EmailService {
             throw new RuntimeException("Erreur lors de l'envoi de l'email: " + e.getMessage(), e);
         }
     }
-
     /**
      * Envoie un email de notification après validation d'entretien
      * avec notification système pour le destinataire
@@ -182,7 +201,7 @@ public class EmailService {
         String html = buildEmailTemplate(collaborateurNom, typeEntretien, matricule);
         sendEmail(expediteurEmail, destinataireEmail, sujet, html);
 
-        // ✅ ENVOYER UNE NOTIFICATION SYSTÈME AU DESTINATAIRE (le plus important!)
+        // ✅ NOTIFICATION POUR LE DESTINATAIRE
         String destinataireLogin = getLoginFromEmail(destinataireEmail);
         if (destinataireLogin != null) {
             String titreNotif = String.format("📋 Entretien %s - %s", typeEntretien, collaborateurNom);
@@ -192,17 +211,17 @@ public class EmailService {
             );
 
             notificationService.envoyerNotification(
-                    destinataireLogin,  // ← LOGIN du destinataire (QM, SGL, HP, etc.)
+                    destinataireLogin,
                     titreNotif,
                     messageNotif,
                     "ENTRETIEN",
-                    matricule,  // matriculeCollaborateur
+                    matricule,
                     typeEntretien
             );
             log.info("Notification système envoyée à l'utilisateur: {}", destinataireLogin);
         }
 
-        // ✅ Notifier aussi l'expéditeur que l'email a été envoyé
+        // ✅ NOTIFICATION POUR L'EXPÉDITEUR (SL) - DÉPLACÉE ICI AUSSI POUR PLUS DE CLARTÉ
         String expediteurLogin = getLoginFromEmail(expediteurEmail);
         if (expediteurLogin != null) {
             notificationService.envoyerNotification(
@@ -312,6 +331,34 @@ public class EmailService {
 
         } catch (Exception e) {
             log.error("Erreur envoi mail défaut grave au SGL {}: {}", sglEmail, e.getMessage());
+        }
+    }
+
+    private void envoyerNotificationExpediteur(String expediteurEmail, String destinataireEmail, String sujet, boolean succes, String erreurMessage) {
+        String expediteurLogin = getLoginFromEmail(expediteurEmail);
+        if (expediteurLogin == null) {
+            log.warn("Impossible de trouver le login pour l'expéditeur: {}", expediteurEmail);
+            return;
+        }
+
+        if (succes) {
+            notificationService.envoyerNotification(
+                    expediteurLogin,
+                    "✅ Email envoyé",
+                    "Votre email à " + destinataireEmail + " a été envoyé avec succès",
+                    "SUCCESS",
+                    null,
+                    null
+            );
+        } else {
+            notificationService.envoyerNotification(
+                    expediteurLogin,
+                    "❌ Erreur d'envoi email",
+                    "L'email à " + destinataireEmail + " n'a pas pu être envoyé : " + erreurMessage,
+                    "ERROR",
+                    null,
+                    null
+            );
         }
     }
 }

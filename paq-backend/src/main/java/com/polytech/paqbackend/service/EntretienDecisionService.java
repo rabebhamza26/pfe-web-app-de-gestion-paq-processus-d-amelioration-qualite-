@@ -96,7 +96,8 @@ public class EntretienDecisionService {
                 try {
                     String sujet = String.format("[PAQ] Entretien de décision - %s - %s", nomCollab, typeAction);
                     String htmlContent = buildEmailContent(nomCollab, matricule, typeAction, messageOptionnel);
-                    emailService.sendEmail(expediteur, destinataire.trim(), sujet, htmlContent);
+                    emailService.sendEmail(expediteur, destinataire, sujet, htmlContent);  // ✅ Déjà correct
+
                     log.info("✅ Email envoyé avec succès à: {}", destinataire);
                 } catch (Exception e) {
                     log.error("❌ Erreur envoi email à {}: {}", destinataire, e.getMessage(), e);

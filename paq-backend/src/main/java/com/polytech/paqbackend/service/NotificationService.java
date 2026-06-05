@@ -70,7 +70,6 @@ public class NotificationService {
             return null;
         }
 
-        // Récupérer le nom du collaborateur si matriculeCollaborateur est fourni
         String nomCollaborateur = "";
         if (matriculeCollaborateur != null && !matriculeCollaborateur.isBlank()) {
             Optional<Collaborator> collaboratorOpt = collaboratorRepository.findByMatricule(matriculeCollaborateur);
@@ -95,16 +94,26 @@ public class NotificationService {
             Notification saved = repo.save(notif);
             log.info("Notification sauvegardée pour login={}", loginCanonique);
 
-            // Envoi WebSocket
-            Map<String, Object> notificationDTO = convertToDTO(saved, nomCollaborateur);
+            // ✅ CRÉER LE DTO POUR LE FRONTEND
+            Map<String, Object> notificationDTO = new HashMap<>();
+            notificationDTO.put("id", saved.getId());
+            notificationDTO.put("titre", saved.getTitre());
+            notificationDTO.put("message", saved.getMessage());
+            notificationDTO.put("lu", saved.isLu());
+            notificationDTO.put("createdAt", saved.getCreatedAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+            notificationDTO.put("type", saved.getType());
+            notificationDTO.put("typeEntretien", saved.getTypeEntretien());
+            notificationDTO.put("matriculeCollaborateur", saved.getMatriculeCollaborateur());
+            notificationDTO.put("nomCollaborateur", nomCollaborateur);
 
+            // ✅ ENVOI WEBSOCKET IMMÉDIAT
             messagingTemplate.convertAndSendToUser(
                     loginCanonique,
                     "/queue/notifications",
                     notificationDTO
             );
 
-            log.info("Notification WebSocket envoyée à user: {}", loginCanonique);
+            log.info("✅ Notification WebSocket envoyée à user: {}", loginCanonique);
 
             return saved;
 
@@ -188,5 +197,31 @@ public class NotificationService {
         dto.put("matriculeCollaborateur", n.getMatriculeCollaborateur());
         dto.put("nomCollaborateur", nomCollaborateur);
         return dto;
+    }
+
+    public void sendWebSocketNotification(String login, Map<String, Object> customNotification) {
+        try {
+            if (customNotification == null) {
+                // Récupérer les dernières notifications non lues
+                List<Map<String, Object>> unreadNotifs = getUnreadNotificationsByLogin(login);
+                if (!unreadNotifs.isEmpty()) {
+                    // Envoyer la plus récente
+                    messagingTemplate.convertAndSendToUser(
+                            login,
+                            "/queue/notifications",
+                            unreadNotifs.get(0)
+                    );
+                }
+            } else {
+                messagingTemplate.convertAndSendToUser(
+                        login,
+                        "/queue/notifications",
+                        customNotification
+                );
+            }
+            log.info("Notification WebSocket forcée envoyée à {}", login);
+        } catch (Exception e) {
+            log.error("Erreur envoi WebSocket forcé à {}: {}", login, e.getMessage());
+        }
     }
 }
