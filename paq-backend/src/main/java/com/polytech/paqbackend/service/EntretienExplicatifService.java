@@ -137,14 +137,19 @@ public class EntretienExplicatifService {
     }
 
     // ── Méthode update ────────────────────────────────────────────────────────
-    public EntretienExplicatif update(Long id,
-                                      String matricule,
+    public EntretienExplicatif update(Long id, String matricule,
                                       EntretienExplicatifDTO dto,
                                       String expediteurEmail) {
+        log.info("=== UPDATE ENTRETIEN ===");
+        log.info("ID: {}, Matricule: {}", id, matricule);
+        log.info("DefautGrave dans DTO: {}", dto.isDefautGrave());
+
         EntretienExplicatif existing = entretienRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Entretien introuvable: " + id));
 
         boolean etaitDejaDefautGrave = existing.isDefautGrave();
+        log.info("DefautGrave existant: {}", etaitDejaDefautGrave);
+
         mapDtoToEntity(dto, existing);
         EntretienExplicatif updated = entretienRepo.save(existing);
 
@@ -156,7 +161,7 @@ public class EntretienExplicatifService {
 
             String notes = "Type faute: " + dto.getTypeFaute()
                     + " | Description: " + (dto.getDescription() != null ? dto.getDescription() : "")
-                    + " | Mesures: "     + (dto.getMesuresCorrectives() != null ? dto.getMesuresCorrectives() : "")
+                    + " | Mesures: " + (dto.getMesuresCorrectives() != null ? dto.getMesuresCorrectives() : "")
                     + (dto.isDefautGrave() ? " | DÉFAUT GRAVE" : "");
             paq.setPremierEntretienNotes(notes);
 
@@ -174,9 +179,13 @@ public class EntretienExplicatifService {
             paq.setHistorique(historique);
             paqRepository.save(paq);
 
-            // Envoyer le mail SGL seulement si défaut grave NOUVELLEMENT coché
+            // ✅ Envoyer le mail SGL si défaut grave NOUVELLEMENT coché
             if (dto.isDefautGrave() && !etaitDejaDefautGrave) {
+                log.info("🚨 DÉFAUT GRAVE DÉTECTÉ - Envoi notification SGL");
                 notifierSGL(matricule, dto.getTypeFaute(), expediteurEmail);
+            } else {
+                log.info("Pas d'envoi email: defautGrave={}, etaitDejaDefautGrave={}",
+                        dto.isDefautGrave(), etaitDejaDefautGrave);
             }
         }
 
@@ -184,57 +193,93 @@ public class EntretienExplicatifService {
     }
 
     // ── Méthode privée : chercher les SGL du segment et envoyer le mail ───────
-    // EntretienExplicatifService.java — méthode notifierSGL()
-// REMPLACER :
+// Dans EntretienExplicatifService.java - méthode notifierSGL()
     private void notifierSGL(String matricule, String typeFaute, String expediteurEmail) {
         try {
+            log.info("=== DÉBUT NOTIFICATION SGL ===");
+            log.info("Matricule: {}", matricule);
+            log.info("Type faute: {}", typeFaute);
+            log.info("Expéditeur email: {}", expediteurEmail);
+
             Optional<Collaborator> collabOpt = collaborateurRepo.findById(matricule);
             if (collabOpt.isEmpty()) {
-                log.warn("Collaborateur {} introuvable pour notification SGL", matricule);
+                log.error("❌ Collaborateur {} introuvable", matricule);
                 return;
             }
+
             Collaborator collab = collabOpt.get();
             String collaborateurNom = collab.getName() + " " + collab.getPrenom();
+            String segmentNom = collab.getSegment();
 
-            // ✅ segment est un String — on cherche les SGL par nom de segment
-            String segmentNom = collab.getSegment(); // String directement
+            log.info("Collaborateur: {}", collaborateurNom);
+            log.info("Segment: {}", segmentNom);
+
             if (segmentNom == null || segmentNom.isBlank()) {
-                log.warn("Segment null pour le collaborateur {}", matricule);
+                log.error("❌ Segment null pour le collaborateur {}", matricule);
                 return;
             }
 
-            // ✅ Utiliser la méthode adaptée à votre User/Segment
-            List<User> sgls = userRepository.findSGLBySegmentNom(segmentNom);
+            // ✅ SOLUTION: Trouver TOUS les utilisateurs avec le rôle "SGL"
+            List<User> allUsers = userRepository.findAll();
+            List<User> sgls = new ArrayList<>();
+
+            for (User user : allUsers) {
+                // Vérifier si l'utilisateur a le rôle SGL
+                if (user.getRole() != null && "SGL".equals(user.getRole().name())) {
+                    // Vérifier si l'utilisateur est associé au segment du collaborateur
+                    if (user.getSegments() != null) {
+                        boolean hasSegment = user.getSegments().stream()
+                                .anyMatch(seg -> segmentNom.equals(seg.getNomSegment()));
+                        if (hasSegment) {
+                            sgls.add(user);
+                            log.info("✅ SGL trouvé: {} - {}", user.getLogin(), user.getEmail());
+                        }
+                    }
+                }
+            }
+
+            log.info("SGL trouvés pour le segment '{}': {}", segmentNom, sgls.size());
 
             if (sgls.isEmpty()) {
-                log.warn("Aucun SGL trouvé pour le segment '{}' (matricule {})",
-                        segmentNom, matricule);
+                log.warn("⚠️ Aucun SGL trouvé pour le segment '{}'", segmentNom);
                 return;
             }
 
+            // ✅ Envoyer les emails
+            String expediteurReel = (expediteurEmail != null && !expediteurEmail.isBlank())
+                    ? expediteurEmail
+                    : "system@paq.com";
+
             for (User sgl : sgls) {
+                log.info("📧 Envoi email à SGL: {} ({})", sgl.getLogin(), sgl.getEmail());
+
                 String html = buildDefautGraveEmail(
-                        sgl.getNomUtilisateur() != null
-                                ? sgl.getNomUtilisateur() : sgl.getLogin(),
+                        sgl.getNomUtilisateur() != null ? sgl.getNomUtilisateur() : sgl.getLogin(),
                         collaborateurNom,
                         matricule,
                         segmentNom,
                         typeFaute
                 );
-                emailService.sendEmail(
-                        expediteurEmail,
-                        sgl.getEmail(),
-                        "[PAQ] ⚠ Défaut grave — Participation SGL obligatoire",
-                        html
-                );
-                log.info("Notification défaut grave envoyée au SGL {} pour matricule {}",
-                        sgl.getEmail(), matricule);
+
+                try {
+                    emailService.sendEmail(
+                            expediteurReel,
+                            sgl.getEmail(),
+                            "[PAQ] ⚠ Défaut grave — Participation SGL obligatoire",
+                            html
+                    );
+                    log.info("✅ Email envoyé avec succès à {}", sgl.getEmail());
+                } catch (Exception e) {
+                    log.error("❌ Erreur envoi email à {}: {}", sgl.getEmail(), e.getMessage(), e);
+                }
             }
+
+            log.info("=== FIN NOTIFICATION SGL ===");
+
         } catch (Exception e) {
-            log.error("Erreur notification SGL pour {} : {}", matricule, e.getMessage());
+            log.error("❌ Erreur générale dans notifierSGL: {}", e.getMessage(), e);
         }
     }
-
     // Template HTML pour le mail défaut grave
     private String buildDefautGraveEmail(String sglNom, String collaborateurNom,
                                          String matricule, String segment,
@@ -254,7 +299,7 @@ public class EntretienExplicatifService {
             </div>
             <div style="padding:28px 30px;">
               <p>Bonjour <strong>%s</strong>,</p>
-                            <p><strong>Merci d'assister à l'entretien de décision</strong></p>
+                            <p><strong>Merci d'assister à l'entretien </strong></p>
               <p>Un <strong>défaut grave</strong> a été enregistré.
                  Votre participation à l'entretien explicatif est
                  <strong>obligatoire dès le niveau 1</strong>.</p>

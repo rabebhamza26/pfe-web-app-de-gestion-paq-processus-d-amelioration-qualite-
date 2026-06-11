@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Service
@@ -77,35 +78,40 @@ public class EntretienDecisionService {
     }
 
     // ✅ Envoi d'emails aux destinataires
-    private void envoyerEmailsSL(List<String> destinataires, String messageOptionnel, String matricule, String typeAction) {
+// ✅ Envoi d'emails aux destinataires - Version avec tous les paramètres
+    private void envoyerEmailsSL(List<String> destinataires, String messageOptionnel, String matricule,
+                                 String typeAction, String typeFaute, LocalDate dateEntretien, String justification) {
         if (destinataires == null || destinataires.isEmpty()) {
             log.warn("Aucun destinataire spécifié pour l'envoi d'email");
             return;
         }
 
         String nomCollab = getCollaborateurNom(matricule);
-        String expediteur = "noreply@leoni.com"; // Ou utilisez une config
+        String expediteur = "noreply@leoni.com";
 
         log.info("=== ENVOI EMAILS ===");
         log.info("Destinataires: {}", destinataires);
         log.info("Type action: {}", typeAction);
+        log.info("Type faute: {}", typeFaute);
+        log.info("Date entretien: {}", dateEntretien);
+        log.info("Justification: {}", justification);
         log.info("Message optionnel: {}", messageOptionnel);
 
         for (String destinataire : destinataires) {
             if (destinataire != null && !destinataire.trim().isEmpty()) {
                 try {
                     String sujet = String.format("[PAQ] Entretien de décision - %s - %s", nomCollab, typeAction);
-                    String htmlContent = buildEmailContent(nomCollab, matricule, typeAction, messageOptionnel);
-                    emailService.sendEmail(expediteur, destinataire, sujet, htmlContent);  // ✅ Déjà correct
-
+                    String htmlContent = buildEmailContent(nomCollab, matricule, typeAction, messageOptionnel,
+                            typeFaute, dateEntretien, justification);
+                    emailService.sendEmail(expediteur, destinataire, sujet, htmlContent);
                     log.info("✅ Email envoyé avec succès à: {}", destinataire);
                 } catch (Exception e) {
                     log.error("❌ Erreur envoi email à {}: {}", destinataire, e.getMessage(), e);
                 }
             }
         }
-    }
-    private String buildEmailContent(String nomCollab, String matricule, String typeAction, String messageOptionnel) {
+    }    private String buildEmailContent(String nomCollab, String matricule, String typeAction, String messageOptionnel,
+                                     String typeFaute, LocalDate dateEntretien, String justification) {
         String actionTexte = "";
         switch (typeAction) {
             case "CRÉATION": actionTexte = "créé"; break;
@@ -114,6 +120,11 @@ public class EntretienDecisionService {
             default: actionTexte = typeAction;
         }
 
+        // Formater la date
+        DateTimeFormatter frenchFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        String dateFormatted = dateEntretien != null ? dateEntretien.format(frenchFormatter) : "Non définie";
+
+        // Construction du message optionnel
         String messageHtml = "";
         if (messageOptionnel != null && !messageOptionnel.isEmpty()) {
             messageHtml = String.format("""
@@ -124,6 +135,17 @@ public class EntretienDecisionService {
             """, messageOptionnel);
         }
 
+        // Ajouter la cause principale si présente
+        String justificationHtml = "";
+        if (justification != null && !justification.isEmpty()) {
+            justificationHtml = String.format("""
+            <tr>
+              <td style="padding:8px;border:1px solid #ddd;"><strong>Cause principale</strong></td>
+              <td style="padding:8px;border:1px solid #ddd;">%s</td>
+            </tr>
+            """, justification);
+        }
+
         return String.format("""
         <!DOCTYPE html>
         <html>
@@ -131,7 +153,7 @@ public class EntretienDecisionService {
         <body style="font-family: Arial, sans-serif;">
           <div style="max-width:600px;margin:auto;background:white;border-radius:8px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.1);">
             <div style="background:#C8102E;padding:15px;border-radius:8px 8px 0 0;margin:-20px -20px 0 -20px;">
-              <h2 style="color:white;margin:0;">📋 PAQ - Entretien de Décision</h2>
+              <h2 style="color:white;margin:0;"> PAQ - Entretien de Décision</h2>
             </div>
             <div style="padding:20px 0;">
               <p>Bonjour,</p>
@@ -142,20 +164,21 @@ public class EntretienDecisionService {
                   <td style="padding:10px;border:1px solid #ddd;font-weight:600;width:40%%">Collaborateur</td>
                   <td style="padding:10px;border:1px solid #ddd;"><strong>%s</strong></td>
                 </tr>
-                <tr>
+                <tr style="background:#ffffff;">
                   <td style="padding:10px;border:1px solid #ddd;font-weight:600;">Matricule</td>
                   <td style="padding:10px;border:1px solid #ddd;"><code>%s</code></td>
                 </tr>
                 <tr style="background:#f8f9fa;">
-                  <td style="padding:10px;border:1px solid #ddd;font-weight:600;">Action</td>
-                  <td style="padding:10px;border:1px solid #ddd;">%s</td>
+                  <td style="padding:10px;border:1px solid #ddd;font-weight:600;">Type de faute</td>
+                  <td style="padding:10px;border:1px solid #ddd;"><strong>%s</strong></td>
                 </tr>
-                <tr>
-                  <td style="padding:10px;border:1px solid #ddd;font-weight:600;">Date</td>
+                <tr style="background:#ffffff;">
+                  <td style="padding:10px;border:1px solid #ddd;font-weight:600;">Date entretien</td>
                   <td style="padding:10px;border:1px solid #ddd;">%s</td>
                 </tr>
                 %s
-              </table>
+                %s
+               </table>
               <div style="background:#e3f2fd;padding:15px;border-radius:8px;margin:15px 0;">
                 <p style="margin:0;color:#1565c0;">
                   <strong>🔔 Action requise :</strong><br>
@@ -170,12 +193,13 @@ public class EntretienDecisionService {
         </body>
         </html>
         """,
-                actionTexte,        // %s 1
-                nomCollab,          // %s 2
-                matricule,          // %s 3
-                typeAction,         // %s 4
-                LocalDate.now(),    // %s 5
-                messageHtml         // %s 6
+                actionTexte,              // %s 1 - "modifié", "créé", etc.
+                nomCollab,                // %s 2 - Nom du collaborateur
+                matricule,               // %s 3 - Matricule
+                typeFaute != null ? typeFaute : "",  // %s 4 - Type de faute
+                dateFormatted,           // %s 5 - Date formatée (dd/MM/yyyy)
+                justificationHtml,       // %s 6 - Cause principale
+                messageHtml              // %s 7 - Message optionnel
         );
     }
     // ─── CRÉATION (SL) ─────────────────────────────────────────────────────────
@@ -225,20 +249,20 @@ public class EntretienDecisionService {
     public EntretienDecision createAvecNotification(String matricule, EntretienDecisionRequestDTO dto, String expediteurEmail) {
         EntretienDecision saved = create(matricule, dto, expediteurEmail);
         if (dto.getDestinatairesEmails() != null && !dto.getDestinatairesEmails().isEmpty()) {
-            envoyerEmailsSL(dto.getDestinatairesEmails(), dto.getMessageOptionnel(), matricule, "CRÉATION");
+            envoyerEmailsSL(dto.getDestinatairesEmails(), dto.getMessageOptionnel(), matricule,
+                    "CRÉATION", dto.getTypeFaute(), dto.getDateEntretien(), dto.getJustification());
         }
         return saved;
     }
-
     // ─── MODIFICATION (SL) ──────────────────────────────────────────────────────
     public EntretienDecision updateAvecNotification(Long id, String matricule, EntretienDecisionRequestDTO dto, String expediteurEmail) {
         EntretienDecision updated = updateWithPaqUpdate(id, matricule, dto);
         if (dto.getDestinatairesEmails() != null && !dto.getDestinatairesEmails().isEmpty()) {
-            envoyerEmailsSL(dto.getDestinatairesEmails(), dto.getMessageOptionnel(), matricule, "MODIFICATION");
+            envoyerEmailsSL(dto.getDestinatairesEmails(), dto.getMessageOptionnel(), matricule,
+                    "MODIFICATION", dto.getTypeFaute(), dto.getDateEntretien(), dto.getJustification());
         }
         return updated;
     }
-
     private EntretienDecision updateWithPaqUpdate(Long id, String matricule, EntretienDecisionRequestDTO dto) {
         EntretienDecision existing = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Entretien introuvable: " + id));
@@ -307,9 +331,8 @@ public class EntretienDecisionService {
 
         if (destinatairesSelectionnes != null && !destinatairesSelectionnes.isEmpty()) {
             log.info("Envoi des emails à {} destinataires", destinatairesSelectionnes.size());
-            envoyerEmailsSL(destinatairesSelectionnes, dto.getMessageOptionnel(), matricule, "VALIDATION SL");
-        } else {
-            log.warn("⚠️ Aucun destinataire trouvé dans le DTO - Email non envoyé !");
+            envoyerEmailsSL(destinatairesSelectionnes, dto.getMessageOptionnel(), matricule,
+                    "VALIDATION SL", dto.getTypeFaute(), dto.getDateEntretien(), dto.getJustification());
         }
 
         return updated;

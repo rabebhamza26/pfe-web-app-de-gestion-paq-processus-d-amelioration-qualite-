@@ -31,7 +31,6 @@ public class ArchivingService {
     }
 
     /**
-     * Tâche planifiée : tous les jours à 02h00.
      * Archive automatiquement les PAQ actifs dont dateFin <= aujourd'hui (6 mois écoulés)
      * et qui n'ont pas encore été archivés.
      */

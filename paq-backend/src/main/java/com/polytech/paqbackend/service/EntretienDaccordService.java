@@ -290,41 +290,56 @@ public class EntretienDaccordService {
     }
 
     private String buildEmailConvocationContent(String nomCollab, String matricule, EntretienDaccordRequestDTO dto) {
+        // Formater la date correctement
+        String dateFormatted = "";
+        if (dto.getDate() != null) {
+            DateTimeFormatter frenchFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            dateFormatted = dto.getDate().format(frenchFormatter);
+        }
+
         return String.format("""
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="UTF-8"></head>
-        <body style="font-family: Arial, sans-serif;">
-          <div style="max-width:600px;margin:auto;background:white;border-radius:8px;padding:20px;">
-            <div style="background:#C8102E;padding:15px;border-radius:8px 8px 0 0;margin:-20px -20px 0 -20px;">
-              <h2 style="color:white;margin:0;">PAQ - Entretien d'accord</h2>
-            </div>
-            <div style="padding:20px 0;">
-              <p>Bonjour,</p>
-              <p><strong>Merci d'assister à l'entretien d'accord</strong></p>
-              <table style="width:100%%;border-collapse:collapse;margin:20px 0;">
-                <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Collaborateur</strong></td>
-                    <td style="padding:8px;border:1px solid #ddd;">%s</td></tr>
-                <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Matricule</strong></td>
-                    <td style="padding:8px;border:1px solid #ddd;">%s</td></tr>
-                <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Type de faute</strong></td>
-                    <td style="padding:8px;border:1px solid #ddd;">%s</td></tr>
-                <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Date</strong></td>
-                    <td style="padding:8px;border:1px solid #ddd;">%s</td></tr>
-                <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Cause de faute</strong></td>
-                    <td style="padding:8px;border:1px solid #ddd;">%s</td></tr>
-                <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Mesures proposées</strong></td>
-                    <td style="padding:8px;border:1px solid #ddd;">%s</td></tr>
-              </table>
-              <p>Veuillez vous connecter au système PAQ pour valider cet entretien.</p>
-            </div>
-          </div>
-        </body>
-        </html>
-        """, nomCollab, matricule,
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"></head>
+    <body style="font-family: Arial, sans-serif;">
+      <div style="max-width:600px;margin:auto;background:white;border-radius:8px;padding:20px;">
+        <div style="background:#C8102E;padding:15px;border-radius:8px 8px 0 0;margin:-20px -20px 0 -20px;">
+          <h2 style="color:white;margin:0;">PAQ - Entretien d'accord</h2>
+        </div>
+        <div style="padding:20px 0;">
+          <p>Bonjour,</p>
+          <p><strong>Merci d'assister à l'entretien d'accord</strong></p>
+          <table style="width:100%%;border-collapse:collapse;margin:20px 0;">
+            <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Collaborateur</strong></td>
+                <td style="padding:8px;border:1px solid #ddd;">%s</td>
+            </tr>
+            <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Matricule</strong></td>
+                <td style="padding:8px;border:1px solid #ddd;">%s</td>
+            </tr>
+            <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Type de faute</strong></td>
+                <td style="padding:8px;border:1px solid #ddd;">%s</td>
+            </tr>
+            <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Date</strong></td>
+                <td style="padding:8px;border:1px solid #ddd;">%s</td>
+            </tr>
+            <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Cause de faute</strong></td>
+                <td style="padding:8px;border:1px solid #ddd;">%s</td>
+            </tr>
+            <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Mesures proposées</strong></td>
+                <td style="padding:8px;border:1px solid #ddd;">%s</td>
+            </tr>
+          </table>
+          <p>Veuillez vous connecter au système PAQ pour valider cet entreien.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+    """,
+                nomCollab != null ? nomCollab : "",
+                matricule != null ? matricule : "",
                 dto.getTypeFaute() != null ? dto.getTypeFaute() : "",
-                dto.getDate() != null ? dto.getDate().toString() : "",
+                dateFormatted,  // ← Date formatée correctement
                 dto.getCauseFaute() != null ? dto.getCauseFaute() : "",
-                dto.getMesuresProposees() != null ? dto.getMesuresProposees() : "");
-    }
-}
+                dto.getMesuresProposees() != null ? dto.getMesuresProposees() : ""
+        );
+    }}
