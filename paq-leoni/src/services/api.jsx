@@ -333,6 +333,7 @@ export const entretienPositifService = {
 
 // ------------------ Notification Service ------------------
 export const notificationService = {
+  
   getAll: () => API.get("/api/notifications"),
   create: (data) => API.post("/api/notifications", data),
   delete: (id) => API.delete(`/api/notifications/${id}`),

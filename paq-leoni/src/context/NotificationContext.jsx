@@ -26,6 +26,19 @@ export const NotificationProvider = ({ children }) => {
   const maxReconnectAttempts = 5;
   const isMounted = useRef(true);
 
+  // ✅ Ajouter cette fonction pour rafraîchir toutes les notifications
+  const refreshNotifications = useCallback(async () => {
+    if (!isAuthenticated || !token) return;
+    try {
+      const res = await notificationService.getAll();
+      if (isMounted.current) {
+        setNotifications(res.data || []);
+      }
+    } catch (err) {
+      console.error("Erreur rafraîchissement notifications:", err);
+    }
+  }, [isAuthenticated, token]);
+
   const loadInitialNotifications = useCallback(async () => {
     if (!isAuthenticated || !token) return;
     try {
@@ -242,7 +255,9 @@ export const NotificationProvider = ({ children }) => {
       markAsRead,
       markAllAsRead,
       addNotification,
-      refreshUnreadCount
+      refreshUnreadCount,
+      refreshNotifications,  // ✅ EXPOSER LA FONCTION
+      loadInitialNotifications  // ✅ Optionnel: aussi utile
     }}>
       {children}
     </NotificationContext.Provider>

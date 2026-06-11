@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useNotifications } from "../context/NotificationContext";
-import { notificationService } from "../services/api"; // ✅ AJOUTER CET IMPORT
+import { notificationService } from "../services/api";
 import "../styles/notification-bell.css";
 
 function NotificationBell() {
@@ -11,23 +11,49 @@ function NotificationBell() {
     unreadCount: contextUnreadCount, 
     markAsRead, 
     markAllAsRead,
-    refreshUnreadCount 
+    refreshUnreadCount,
+    fetchNotifications  // ✅ Utiliser fetchNotifications au lieu de refreshNotifications
   } = useNotifications();
   
   const [isOpen, setIsOpen] = useState(false);
   const [localNotifications, setLocalNotifications] = useState([]);
+  const [showAll, setShowAll] = useState(false);
+  const [loading, setLoading] = useState(false);
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
   const navigate = useNavigate();
 
-  // Utiliser les notifications du contexte pour l'affichage du dropdown
+  // Charger les notifications
+const loadNotifications = async () => {
+  try {
+    // ✅ Utiliser refreshUnreadCount au lieu de refreshNotifications
+    await refreshUnreadCount();
+    
+    // ✅ Récupérer TOUTES les notifications depuis l'API
+    const res = await notificationService.getAll();
+    let notifications = res.data || [];
+    
+    // Trier par date décroissante
+    notifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    // Afficher les 10 dernières notifications
+    const recentNotifications = notifications.slice(0, 10);
+    setLocalNotifications(recentNotifications);
+  } catch (err) {
+    console.error("Erreur chargement notifications:", err);
+    // Fallback: utiliser les notifications du contexte
+    const recentFromContext = [...contextNotifications].sort((a, b) => 
+      new Date(b.createdAt) - new Date(a.createdAt)
+    ).slice(0, 10);
+    setLocalNotifications(recentFromContext);
+  }
+};
+  // Rafraîchir quand le dropdown s'ouvre
   useEffect(() => {
     if (isOpen) {
-      // Filtrer pour n'avoir que les non lues dans le dropdown
-      const unreadOnly = contextNotifications.filter(n => !n.lu);
-      setLocalNotifications(unreadOnly);
+      loadNotifications();
     }
-  }, [isOpen, contextNotifications]);
+  }, [isOpen]);
 
   // Rafraîchir le compteur périodiquement
   useEffect(() => {
@@ -43,6 +69,7 @@ function NotificationBell() {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target) && 
           buttonRef.current && !buttonRef.current.contains(event.target)) {
         setIsOpen(false);
+        setShowAll(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -51,17 +78,9 @@ function NotificationBell() {
 
   const handleToggle = async () => {
     if (!isOpen) {
-      // Rafraîchir le compteur
-      await refreshUnreadCount();
-      // Recharger les notifications depuis l'API
-      try {
-        const res = await notificationService.getUnread();
-        if (res.data) {
-          setLocalNotifications(res.data);
-        }
-      } catch (err) {
-        console.error("Erreur chargement notifications:", err);
-      }
+      await loadNotifications();
+    } else {
+      setShowAll(false);
     }
     setIsOpen(!isOpen);
   };
@@ -69,19 +88,30 @@ function NotificationBell() {
   const handleNotificationClick = async (notification) => {
     if (!notification.lu) {
       await markAsRead(notification.id);
+      // Mettre à jour localement
+      setLocalNotifications(prev => 
+        prev.map(n => n.id === notification.id ? { ...n, lu: true } : n)
+      );
     }
     
+    // Navigation basée sur le type d'entretien
     if (notification.matriculeCollaborateur) {
-      if (notification.typeEntretien === "EXPLICATIF") {
-        navigate(`/entretien-explicatif/${notification.matriculeCollaborateur}`);
-      } else if (notification.typeEntretien === "ACCORD") {
-        navigate(`/entretien-daccord/${notification.matriculeCollaborateur}`);
-      } else if (notification.typeEntretien === "MESURE") {
-        navigate(`/entretien-de-mesure/${notification.matriculeCollaborateur}`);
-      } else if (notification.typeEntretien === "DECISION") {
-        navigate(`/entretien-de-decision/${notification.matriculeCollaborateur}`);
-      } else {
-        navigate(`/paq-dossier/${notification.matriculeCollaborateur}`);
+      const type = notification.typeEntretien?.toUpperCase();
+      switch (type) {
+        case "EXPLICATIF":
+          navigate(`/entretien-explicatif/${notification.matriculeCollaborateur}`);
+          break;
+        case "ACCORD":
+          navigate(`/entretien-daccord/${notification.matriculeCollaborateur}`);
+          break;
+        case "MESURE":
+          navigate(`/entretien-de-mesure/${notification.matriculeCollaborateur}`);
+          break;
+        case "DECISION":
+          navigate(`/entretien-de-decision/${notification.matriculeCollaborateur}`);
+          break;
+        default:
+          navigate(`/paq-dossier/${notification.matriculeCollaborateur}`);
       }
     }
     
@@ -90,7 +120,9 @@ function NotificationBell() {
 
   const handleMarkAllReadClick = async () => {
     await markAllAsRead();
-    setLocalNotifications([]);
+    // Mettre à jour localement
+    setLocalNotifications(prev => prev.map(n => ({ ...n, lu: true })));
+    await refreshUnreadCount();
   };
 
   const handleViewAll = () => {
@@ -115,24 +147,38 @@ function NotificationBell() {
   };
 
   const getTypeIcon = (type) => {
-    switch (type?.toUpperCase()) {
+    const typeUpper = type?.toUpperCase();
+    switch (typeUpper) {
       case "EXPLICATIF": return "📋";
       case "ACCORD": return "🤝";
       case "MESURE": return "📊";
       case "DECISION": return "⚖️";
+      case "ENTRETIEN": return "📧";
+      case "INFO": return "ℹ️";
+      case "SUCCESS": return "✅";
+      case "ERROR": return "❌";
       default: return "🔔";
     }
   };
 
   const getTypeColor = (type) => {
-    switch (type?.toUpperCase()) {
+    const typeUpper = type?.toUpperCase();
+    switch (typeUpper) {
       case "EXPLICATIF": return "blue";
       case "ACCORD": return "green";
       case "MESURE": return "orange";
       case "DECISION": return "red";
+      case "ENTRETIEN": return "purple";
+      case "SUCCESS": return "success";
+      case "ERROR": return "error";
       default: return "gray";
     }
   };
+
+  // Filtrer selon l'état showAll
+  const displayedNotifications = showAll 
+    ? localNotifications 
+    : localNotifications.filter(n => !n.lu);
 
   return (
     <div className="notification-bell">
@@ -155,26 +201,39 @@ function NotificationBell() {
         <div className="notification-dropdown" ref={dropdownRef}>
           <div className="notification-header">
             <h4>Notifications</h4>
-            {localNotifications.length > 0 && (
-              <button className="mark-all-read" onClick={handleMarkAllReadClick}>
-                Tout marquer comme lu
+            <div className="notification-header-actions">
+              {localNotifications.some(n => !n.lu) && (
+                <button className="mark-all-read" onClick={handleMarkAllReadClick}>
+                  Tout marquer comme lu
+                </button>
+              )}
+              <button 
+                className="toggle-view"
+                onClick={() => setShowAll(!showAll)}
+              >
+                {showAll ? "📋 Non lues" : "📄 Toutes"}
               </button>
-            )}
+            </div>
           </div>
           
           <div className="notification-list">
-            {localNotifications.length === 0 ? (
+            {loading ? (
+              <div className="notification-loading">
+                <div className="spinner-small"></div>
+                <p>Chargement...</p>
+              </div>
+            ) : displayedNotifications.length === 0 ? (
               <div className="notification-empty">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5">
                   <path d="M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z"/>
                 </svg>
-                <p>Aucune notification non lue</p>
+                <p>{showAll ? "Aucune notification" : "Aucune notification non lue"}</p>
               </div>
             ) : (
-              localNotifications.map((notif) => (
+              displayedNotifications.map((notif) => (
                 <div 
                   key={notif.id} 
-                  className={`notification-item unread`}
+                  className={`notification-item ${!notif.lu ? "unread" : ""}`}
                   onClick={() => handleNotificationClick(notif)}
                 >
                   <div className={`notification-icon ${getTypeColor(notif.typeEntretien)}`}>
@@ -187,12 +246,12 @@ function NotificationBell() {
                       <span className="notification-time">{formatDate(notif.createdAt)}</span>
                       {notif.nomCollaborateur && (
                         <span className="notification-collab">
-                          {notif.nomCollaborateur}
+                          👤 {notif.nomCollaborateur}
                         </span>
                       )}
                     </div>
                   </div>
-                  <div className="notification-dot"></div>
+                  {!notif.lu && <div className="notification-dot"></div>}
                 </div>
               ))
             )}
