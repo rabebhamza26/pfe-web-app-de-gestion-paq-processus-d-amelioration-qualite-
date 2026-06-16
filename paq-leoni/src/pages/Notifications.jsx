@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";  // ✅ Ajout de l'import manquant
 import { notificationService } from "../services/api";
 import { useI18n } from "../context/I18nContext";
-import "../styles/notifications.css";
+import "../styles/Notifications.css";
 
 export default function Notifications({ matricule: propMatricule }) {
   const [notifications, setNotifications] = useState([]);
