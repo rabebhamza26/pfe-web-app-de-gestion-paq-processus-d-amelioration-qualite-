@@ -14,20 +14,7 @@ jobs:
   backend:
     name: Backend - Test & Build
     runs-on: ubuntu-latest
-
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: paq_db
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h localhost"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
+    # ❌ REMOVE the MySQL service - we use H2 for tests
 
     steps:
       - name: ✅ Checkout code
@@ -47,31 +34,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: ⏳ Wait for MySQL to be ready
-        run: |
-          for i in {1..30}; do
-            if mysqladmin ping -h 127.0.0.1 -u root -proot --silent; then
-              echo "MySQL is ready!"
-              break
-            fi
-            echo "Waiting for MySQL... ($i)"
-            sleep 2
-          done
-
       - name: 🧪 Run Tests & Build JAR
         working-directory: ./paq-backend
         env:
-          SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/paq_db
-          SPRING_DATASOURCE_USERNAME: root
-          SPRING_DATASOURCE_PASSWORD: 
           SPRING_PROFILES_ACTIVE: test
-    SPRING_DATASOURCE_URL: jdbc:h2:mem:testdb
-    SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.h2.Driver
-    SPRING_DATASOURCE_USERNAME: sa
-    SPRING_DATASOURCE_PASSWORD: 
-    SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.H2Dialect
-    SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
-  run: mvn clean verify -B -Dspring.profiles.active=test
+        run: mvn clean verify -B -Dspring.profiles.active=test
 
       - name: 📤 Upload JAR artifact
         uses: actions/upload-artifact@v4
@@ -132,13 +99,3 @@ jobs:
 
       - name: 🐳 Build Frontend Docker image
         run: docker build -t my-frontend ./paq-leoni
-
-  services:
-  mysql:
-    image: mysql:8.0
-    env:
-      MYSQL_ROOT_PASSWORD: 
-      MYSQL_DATABASE: paq_db
-    ports:
-      - 3306:3306
-    options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
