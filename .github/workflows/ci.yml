@@ -72,6 +72,12 @@ jobs:
         working-directory: ./paq-leoni
         run: npm test -- --watchAll=false --passWithNoTests
 
+      - name: 🔍 Debug - show import line
+        working-directory: ./paq-leoni
+        run: |
+          git log -1 --oneline
+          grep -n "notifications.css\|Notifications.css" src/pages/Notifications.jsx
+
       - name: 🏗️ Build React app
         working-directory: ./paq-leoni
         run: npm run build
