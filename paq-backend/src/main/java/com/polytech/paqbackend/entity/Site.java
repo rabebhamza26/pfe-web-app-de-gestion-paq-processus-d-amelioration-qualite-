@@ -1,7 +1,8 @@
 package com.polytech.paqbackend.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
+
+
 import jakarta.persistence.*;
 import java.util.List;
 import java.util.Set;
@@ -39,4 +40,6 @@ public class Site {
     public void setName(String name) { this.name = name; }
     public void setPlants(List<Plant> plants) { this.plants = plants; }
     public void setUsers(Set<User> users) { this.users = users; }
+
+
 }

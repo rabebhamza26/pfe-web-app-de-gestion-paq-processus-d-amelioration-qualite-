@@ -2,6 +2,7 @@ package com.polytech.paqbackend.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import jdk.jshell.Snippet;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,6 +34,8 @@ public class Plant {
         this.name = name;
         this.site = site;
     }
+
+
 
     public Long getId() { return id; }
     public String getName() { return name; }
