@@ -257,7 +257,6 @@ const buildDefaultForm = () => ({
   causesPrincipales: "",
   convention: "",
   planAction: "",
-  ksk: "", // Champ KSK optionnel
 });
 
 // ─── Composant principal ──────────────────────────────────────────────────────
@@ -434,7 +433,6 @@ export default function EntretienDeMesure() {
       causesPrincipales: entretien.causesPrincipales || "",
       convention: entretien.convention || "",
       planAction: entretien.planAction || "",
-      ksk: entretien.ksk || "",
     });
     if (entretien.typeFaute && !typeOptions.includes(entretien.typeFaute)) {
       setTypeOptions(prev => [...prev, entretien.typeFaute]);
@@ -463,17 +461,7 @@ export default function EntretienDeMesure() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Gestion spécifique pour le champ KSK (numérique)
-  const handleKskChange = (e) => {
-    if (!canModify && userRole !== "QM_SEGMENT" && userRole !== "SGL") {
-      showErrorAlert("Permission refusée", "Vous n'avez pas les droits.");
-      return;
-    }
-    const value = e.target.value;
-    if (value === "" || value === "-" || /^-?\d*\.?\d*$/.test(value)) {
-      setFormData(prev => ({ ...prev, ksk: value }));
-    }
-  };
+
 
   // ── Bouton MODIFIER (SL uniquement) ──
   const handleModifier = async () => {
@@ -557,7 +545,6 @@ export default function EntretienDeMesure() {
         causesPrincipales: formData.causesPrincipales || "",
         convention: formData.convention || "",
         planAction: formData.planAction || "",
-        ksk: formData.ksk ? parseFloat(formData.ksk) : null,
         destinatairesEmails: destinatairesEmails,
         expediteurEmail: userEmail || "sl@leoni.com"
       };
@@ -601,7 +588,6 @@ export default function EntretienDeMesure() {
         causesPrincipales: formData.causesPrincipales || "",
         convention: formData.convention || "",
         planAction: formData.planAction || "",
-        ksk: formData.ksk ? parseFloat(formData.ksk) : null,
         expediteurEmail: userEmail || "qm@leoni.com"
       };
 
@@ -636,7 +622,6 @@ export default function EntretienDeMesure() {
         causesPrincipales: formData.causesPrincipales || "",
         convention: formData.convention || "",
         planAction: formData.planAction || "",
-        ksk: formData.ksk ? parseFloat(formData.ksk) : null,
         expediteurEmail: userEmail || "sgl@leoni.com"
       };
 
@@ -777,24 +762,6 @@ export default function EntretienDeMesure() {
         </div>
 
         <div className="leoni-header-actions">
-          {/* Champ KSK dans l'en-tête */}
-          <div className="leoni-casca-field">
-            <label htmlFor="ksk" className="leoni-casca-label">
-              KSK
-            </label>
-            <input
-              type="text"
-              id="ksk"
-              name="ksk"
-              value={formData.ksk}
-              onChange={handleKskChange}
-              className="leoni-input leoni-input-casca"
-              placeholder="Optionnel"
-              disabled={valideSGL || (!isEditable && userRole !== "QM_SEGMENT" && userRole !== "SGL")}
-              style={{ width: "100px", textAlign: "center" }}
-            />
-          </div>
-
           {/* Badges de statut */}
           {userRole === "SL" && !currentEntretienId && !valideSGL && (
             <span className="leoni-badge-sl">Mode création (SL)</span>

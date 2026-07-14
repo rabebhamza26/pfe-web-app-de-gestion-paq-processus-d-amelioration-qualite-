@@ -1,109 +1,115 @@
+# Nom du workflow affiché dans l'interface GitHub Actions
 name: CI Pipeline
+# Déclencheurs : quand on pousse sur main/develop ou qu'on ouvre une PR vers main
 
 on:
   push:
+    # Exécuter le workflow sur les branches de production et de développement.
     branches: [ main, develop ]
   pull_request:
+    # Exécuter le workflow sur les pull requests vers la branche main.
     branches: [ main ]
 
+# Liste des jobs à exécuter en parallèle (sauf ceux qui ont des dépendances)
 jobs:
+  # ---- JOB 1 : Backend ----
 
-  # ─────────────────────────────────────────────
-  # JOB 1 — Backend Spring Boot
-  # ─────────────────────────────────────────────
   backend:
+    # Nom du job affiché dans GitHub Actions.
     name: Backend - Test & Build
+    # Environnement d'exécution choisi.
     runs-on: ubuntu-latest
-    # ❌ REMOVE the MySQL service - we use H2 for tests
-
     steps:
-      - name: ✅ Checkout code
+      - name: Checkout code
+        # Récupère le dépôt sur l'agent GitHub.
         uses: actions/checkout@v4
-
-      - name: ☕ Set up JDK 17
+      - name: Set up JDK 17
+        # Installe Java 17 pour compiler l'application backend.
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-
-      - name: 📦 Cache Maven packages
+      - name: Cache Maven packages
+        # Met en cache le répertoire Maven pour accélérer les builds.
         uses: actions/cache@v4
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
-
-      - name: 🧪 Run Tests & Build JAR
+      - name: Run Tests & Build JAR
+        # Exécute les tests et construit le JAR backend.
         working-directory: ./paq-backend
         env:
           SPRING_PROFILES_ACTIVE: test
         run: mvn clean verify -B -Dspring.profiles.active=test
-
-      - name: 📤 Upload JAR artifact
+      - name: Upload JAR artifact
+        # Upload le JAR généré comme artefact pour réutilisation.
         uses: actions/upload-artifact@v4
         with:
           name: paq-backend-jar
           path: paq-backend/target/*.jar
 
-  # ─────────────────────────────────────────────
-  # JOB 2 — Frontend React
-  # ─────────────────────────────────────────────
+  # ---- JOB 2 : Frontend ----
   frontend:
     name: paq-leoni - Test & Build
     runs-on: ubuntu-latest
-
     steps:
-      - name: ✅ Checkout code
+      - name: Checkout code
+        # Récupère le dépôt sur l'agent GitHub.
         uses: actions/checkout@v4
-
-      - name: 🟢 Set up Node.js 20
+      - name: Set up Node.js 20
+        # Installe Node.js 20 pour le build frontend.
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: paq-leoni/package-lock.json
-
-      - name: 📦 Install dependencies
+      - name: Install dependencies
+        # Installe les dépendances Node.js du frontend.
         working-directory: ./paq-leoni
         run: npm ci
-
-      - name: 🧪 Run Tests
+      - name: Run tests
+        # Lance les tests frontend une fois.
         working-directory: ./paq-leoni
         run: npm test -- --watchAll=false --passWithNoTests
-
-      - name: 🔍 Debug - show import line
+      - name: Debug - show import line
+        # Commande de debug pour vérifier les imports et l'état du repo.
         working-directory: ./paq-leoni
         run: |
           git log -1 --oneline
           grep -n "notifications.css\|Notifications.css" src/pages/Notifications.jsx
-
-      - name: 🏗️ Build React app
+      - name: Build React app
+        # Compile le projet React en production.
         working-directory: ./paq-leoni
         run: npm run build
-
-      
-
-      - name: 📤 Upload build artifact
+      - name: Upload build artifact
+        # Upload les fichiers de build pour réutilisation ultérieure.
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build
           path: paq-leoni/dist/
 
-  # ─────────────────────────────────────────────
-  # JOB 3 — Docker Build Check
-  # ─────────────────────────────────────────────
+  # ---- JOB 3 : Docker ----
   docker:
     name: Docker - Build Images
     runs-on: ubuntu-latest
+    # Ce job s'exécute après le backend et le frontend.
     needs: [backend, frontend]
-
     steps:
-      - name: ✅ Checkout code
+      - name: Checkout code
+        # Récupère le dépôt sur l'agent pour construire les images.
         uses: actions/checkout@v4
-
-      - name: 🐳 Build Backend Docker image
+      - name: Build Backend Docker image
+        # Construit l'image Docker du backend.
         run: docker build -t my-backend ./paq-backend
-
-      - name: 🐳 Build Frontend Docker image
+      - name: Build Frontend Docker image
+        # Construit l'image Docker du frontend.
         run: docker build -t my-frontend ./paq-leoni
+
+
+
+
+
+
+        

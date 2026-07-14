@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { archiveService } from "../services/api";
-import { useI18n } from "../context/I18nContext";
 import "../styles/archive.css";
 
 // ─── Mapping type → label / couleur badge ────────────────────────────────────
@@ -53,7 +52,7 @@ const formatDate = (dateStr) => {
 
 // ─── Modal de consultation d'une archive ─────────────────────────────────────
 function ArchiveDetailModal({ archive, onClose }) {
-  const { t } = useI18n();
+  const t = (key) => key;
   if (!archive) return null;
 
   const type = normalizeType(archive.type);

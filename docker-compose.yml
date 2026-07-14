@@ -1,46 +1,67 @@
-
-
 services:
-
   mysql:
+    # Image officielle MySQL 8.0.
     image: mysql:8.0
+    # Nom du conteneur pour faciliter les commandes Docker.
     container_name: mysql_db
+    # Redémarre toujours le conteneur en cas de plantage.
     restart: always
     environment:
+      # Mot de passe root de MySQL pour l'environnement local.
       MYSQL_ROOT_PASSWORD: root
+      # Base de données initiale créée au démarrage.
       MYSQL_DATABASE: mydb
     ports:
+      # Expose MySQL sur le port 3306 de l'hôte.
       - "3306:3306"
     volumes:
+      # Persistance des données MySQL entre les redémarrages.
       - mysql_data:/var/lib/mysql
     healthcheck:
+      # Vérifie que MySQL est prêt en pingant le service.
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 5
-
   backend:
+    # Construction du backend à partir du dossier ./backend.
     build: ./backend
     container_name: spring_backend
     restart: always
     ports:
+      # Expose le backend Spring sur le port 8083.
       - "8083:8083"
     environment:
+      # URL de connexion à MySQL via le nom de service docker-compose.
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/paq_db
+      # Identifiant de la base de données.
       SPRING_DATASOURCE_USERNAME: root
+      # Mot de passe vide pour la base de données locale.
       SPRING_DATASOURCE_PASSWORD: 
     depends_on:
+      # Le backend attend que MySQL soit sain avant de démarrer.
       mysql:
         condition: service_healthy
-
   frontend:
+    # Construction du frontend à partir du dossier ./frontend.
     build: ./frontend
     container_name: react_frontend
     restart: always
     ports:
+      # Expose le frontend React sur le port 5173.
       - "5173:5173"
     depends_on:
+      # Le frontend attend que le backend soit démarré pour les appels API.
       - backend
-
 volumes:
+  # Volume nommé pour stocker les données MySQL.
   mysql_data:
+
+
+
+  
+
+
+
+
+  

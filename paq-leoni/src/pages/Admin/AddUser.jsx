@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { userService, siteService, plantService, getSegments } from "../../services/api";
-import { useI18n } from "../../context/I18nContext";
 
 export default function AddUser() {
-  const { t } = useI18n();
+  const t = (key) => key;
   const initialForm = {
     nomUtilisateur: "",
     login: "",

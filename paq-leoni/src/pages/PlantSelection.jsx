@@ -71,8 +71,8 @@ export default function PlantSelection() {
       <div className="ps-content">
         
     <header className="ps-hero">
-  <h1 className="ps-hero-title">{t("app_name")}</h1>
-  <p className="ps-hero-sub">{t("app_tagline")}</p>
+     <h1 className="ss-hero-title">{"PAQ Web System"}</h1>
+          <p className="ss-hero-sub">{"Processus d'amélioration qualité"}</p>
 </header>
 
 {/* Breadcrumb amélioré */}

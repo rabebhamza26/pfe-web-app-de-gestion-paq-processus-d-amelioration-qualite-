@@ -13,11 +13,12 @@ const API = axios.create({
 API.interceptors.request.use((config) => {
   const token = sessionStorage.getItem("access_token");
   console.log(`📤 ${config.method?.toUpperCase()} ${config.url}`);
+  const isPublicEndpoint = config.url?.startsWith("/api/auth") || config.url?.startsWith("/api/users/auth");
   console.log(`🔑 Token présent: ${!!token}`);
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
     console.log(`✅ Authorization: Bearer ${token.substring(0, 20)}...`);
-  } else {
+  } else if (!isPublicEndpoint) {
     console.warn(`⚠️ Pas de token pour ${config.url}`);
   }
   return config;

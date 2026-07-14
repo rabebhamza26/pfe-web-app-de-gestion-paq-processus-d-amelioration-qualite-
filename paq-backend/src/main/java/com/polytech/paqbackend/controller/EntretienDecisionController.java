@@ -17,6 +17,8 @@ import java.util.Map;
 @RequestMapping("/api/entretiens-decision")
 public class EntretienDecisionController {
 
+    // Controller REST pour gérer les entretiens de décision.
+    // Les rôles sont vérifiés avec @PreAuthorize pour autoriser l'accès selon le type d'utilisateur.
     private static final Logger log = LoggerFactory.getLogger(EntretienDecisionController.class);
     private final EntretienDecisionService service;
 

@@ -1,39 +1,16 @@
 import React from "react";
 
+// Carte réutilisable affichée sur le tableau de bord.
 function DashboardCard({ title, value }) {
   return (
-    <div style={styles.card}>
-      <h4>{title}</h4>
-      <h2>{value}</h2>
+    <div className="animate-scale-in w-40 rounded-lg border-l-4 border-[#e8a020] bg-[#1a1a2e] p-5 text-center text-white shadow-md transition-all duration-300 ease-out hover:-translate-y-1 hover:scale-[1.02] hover:shadow-xl">
+      {/* Titre de la carte */}
+      <h4 className="mb-2 text-[11px] uppercase tracking-[0.5px] text-[#9aa3b2]">{title}</h4>
+
+      {/* Valeur principale affichée dans la carte */}
+      <h2 className="m-0 text-[28px] font-bold text-[#e8a020]">{value}</h2>
     </div>
   );
 }
-
-const styles = {
- 
-  card: {
-    background: "#1a1a2e",
-    color: "#fff",
-    padding: "20px",
-    borderRadius: "8px",
-    width: "160px",
-    textAlign: "center",
-    borderLeft: "4px solid #e8a020",
-  },
-  title: {
-    fontSize: "11px",
-    color: "#9aa3b2",
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
-    marginBottom: "8px",
-  },
-  value: {
-    fontSize: "28px",
-    fontWeight: "700",
-    color: "#e8a020",
-    margin: 0,
-  },
-
-};
 
 export default DashboardCard;

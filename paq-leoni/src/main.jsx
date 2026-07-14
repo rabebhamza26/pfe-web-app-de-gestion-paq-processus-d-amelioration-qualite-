@@ -10,7 +10,7 @@ createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <AuthProvider>
       <I18nProvider>
-        <BrowserRouter> {/* ✅ UN SEUL ICI */}
+        <BrowserRouter>
           <App />
         </BrowserRouter>
       </I18nProvider>

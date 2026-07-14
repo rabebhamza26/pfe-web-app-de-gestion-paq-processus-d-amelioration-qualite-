@@ -2,14 +2,13 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { dashboardService, paqService } from "../services/api";
 import { showErrorAlert } from "../utils/entretienAlerts";
-import { useI18n } from "../context/I18nContext";
 import { useSelection } from "../context/SelectionContext";
 import "../styles/dashboard.css";
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { selectedSite, selectedPlant } = useSelection();
-  const { t } = useI18n();
+  const t = (key) => key;
 
   const [loading, setLoading] = useState(true);
   const [exportLoading, setExportLoading] = useState(false);

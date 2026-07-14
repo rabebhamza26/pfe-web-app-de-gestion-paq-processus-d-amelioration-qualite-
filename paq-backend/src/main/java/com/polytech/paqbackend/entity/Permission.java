@@ -61,6 +61,7 @@ public enum Permission {
     COLLABORATEUR_UPDATE("collaborateur:update"),
     COLLABORATEUR_DELETE("collaborateur:delete"),
 
+    
     // ── Entretien Positif ─────────────────────────────────
     POSITIF_READ("positif:read"),
     POSITIF_SEND("positif:send"),

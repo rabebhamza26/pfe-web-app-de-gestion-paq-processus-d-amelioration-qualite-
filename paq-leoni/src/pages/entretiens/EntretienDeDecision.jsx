@@ -331,7 +331,6 @@ const buildDefaultForm = () => ({
   decision: "",
   justification: "",
   causePrincipale: "",
-  ksk: "", // Champ KSK optionnel
 });
 
 // ─── Composant principal ──────────────────────────────────────────────────────
@@ -559,7 +558,7 @@ const loadEmailsByPerimeter = async () => {
       decision: entretien.decision || "",
       justification: entretien.justification || "",
       causePrincipale: entretien.causePrincipale || "",
-      ksk: entretien.ksk || "",
+
     });
     if (entretien.typeFaute && !typeOptions.includes(entretien.typeFaute)) {
       setTypeOptions(prev => [...prev, entretien.typeFaute]);
@@ -588,17 +587,7 @@ const loadEmailsByPerimeter = async () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Gestion spécifique pour le champ KSK (numérique)
-  const handleKskChange = (e) => {
-    if (!canModify && userRole !== "HP" && userRole !== "SGL" && userRole !== "QM_PLANT") {
-      showErrorAlert("Permission refusée", "Vous n'avez pas les droits.");
-      return;
-    }
-    const value = e.target.value;
-    if (value === "" || value === "-" || /^-?\d*\.?\d*$/.test(value)) {
-      setFormData(prev => ({ ...prev, ksk: value }));
-    }
-  };
+
 
   // ── Bouton MODIFIER (SL uniquement) ──
   const handleModifier = async () => {
@@ -645,7 +634,6 @@ const loadEmailsByPerimeter = async () => {
         decision: formData.decision,
         justification: formData.justification || "",
         causePrincipale: formData.causePrincipale || "",
-        ksk: formData.ksk ? parseFloat(formData.ksk) : null,
         destinatairesEmails: destinatairesEmails,
       };
 
@@ -689,7 +677,6 @@ const loadEmailsByPerimeter = async () => {
         decision: formData.decision,
         justification: formData.justification || "",
         causePrincipale: formData.causePrincipale || "",
-        ksk: formData.ksk ? parseFloat(formData.ksk) : null,
       };
 
       await entretienDecisionService.valider1(matricule, currentEntretienId, entretienData);
@@ -719,7 +706,6 @@ const loadEmailsByPerimeter = async () => {
         decision: formData.decision,
         justification: formData.justification || "",
         causePrincipale: formData.causePrincipale || "",
-        ksk: formData.ksk ? parseFloat(formData.ksk) : null,
       };
 
       await entretienDecisionService.valider2(matricule, currentEntretienId, entretienData);
@@ -855,23 +841,6 @@ const loadEmailsByPerimeter = async () => {
         </div>
 
         <div className="leoni-header-actions">
-          {/* Champ KSK dans l'en-tête */}
-          <div className="leoni-casca-field">
-            <label htmlFor="ksk" className="leoni-casca-label">
-              KSK
-            </label>
-            <input
-              type="text"
-              id="ksk"
-              name="ksk"
-              value={formData.ksk}
-              onChange={handleKskChange}
-              className="leoni-input leoni-input-casca"
-              placeholder="Optionnel"
-              disabled={valideQMPlant || (!isEditable && userRole !== "HP" && userRole !== "SGL" && userRole !== "QM_PLANT")}
-              style={{ width: "100px", textAlign: "center" }}
-            />
-          </div>
 
           {/* Badges de statut */}
           {userRole === "SL" && !currentEntretienId && !valideQMPlant && (

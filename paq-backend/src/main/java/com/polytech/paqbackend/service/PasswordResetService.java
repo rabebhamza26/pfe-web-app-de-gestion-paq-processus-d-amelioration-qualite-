@@ -27,6 +27,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PasswordResetService {
 
+    // Service responsable de la réinitialisation de mot de passe et de l'envoi d'emails.
     private static final Logger log = LoggerFactory.getLogger(PasswordResetService.class);
 
     private final UserRepository userRepository;

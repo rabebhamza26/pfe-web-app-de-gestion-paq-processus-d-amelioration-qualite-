@@ -7,7 +7,6 @@ import {
 } from "../../services/api";
 import { useNavigate, useParams } from "react-router-dom";
 import { showConfirmAlert, showErrorAlert, showInfoToast, showSuccessAlert, showSuccessToast } from "../../utils/entretienAlerts";
-import { useI18n } from "../../context/I18nContext";
 
 import "../../styles/entretien-final.css";
 import "../../styles/paq-dossier.css";
@@ -20,13 +19,13 @@ const buildDefaultForm = () => ({
   decision: "",
   commentaireRH: "",
   causePrincipale: "",
-  ksk: "", // Champ KSK optionnel
 });
 
 export default function EntretienFinal({ niveau = 5 }) {
   const { matricule } = useParams();
   const navigate = useNavigate();
-  const { t, lang } = useI18n();
+  const t = (key) => key;
+  const lang = "fr";
 
   const [typeOptions,       setTypeOptions]       = useState([]);
   const [showDefautModal,   setShowDefautModal]   = useState(false);
@@ -114,7 +113,7 @@ export default function EntretienFinal({ niveau = 5 }) {
       decision: entretien.decision || "",
       commentaireRH: entretien.commentaireRH || "",
       causePrincipale: entretien.causePrincipale || "",
-      ksk: entretien.ksk ?? entretien.casca ?? "", // Charger KSK (fallback casca)
+
     });
     
     if (entretien.typeFaute && !typeOptions.includes(entretien.typeFaute)) {
@@ -137,13 +136,7 @@ export default function EntretienFinal({ niveau = 5 }) {
 
   const handleChange = e => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  // Gestion spécifique pour le champ KSK (numérique)
-  const handleKskChange = (e) => {
-    const value = e.target.value;
-    if (value === "" || value === "-" || /^-?\d*\.?\d*$/.test(value)) {
-      setFormData({ ...formData, ksk: value });
-    }
-  };
+
 
   const addTypeOption = async () => {
     const value = defautTypeInput.trim();
@@ -248,7 +241,6 @@ export default function EntretienFinal({ niveau = 5 }) {
         decision: formData.decision,
         commentaireRH: formData.commentaireRH,
         causePrincipale: formData.causePrincipale || "",
-        ksk: formData.ksk ? parseFloat(formData.ksk) : null, // Envoyer KSK
       };
 
       if (currentId) {
@@ -307,24 +299,7 @@ export default function EntretienFinal({ niveau = 5 }) {
               </span>
             )}
           </div>
-          <div className="leoni-header-actions">
-            {/* Champ KSK dans l'en-tête */}
-            <div className="leoni-casca-field">
-              <label htmlFor="ksk" className="leoni-casca-label">
-                KSK
-              </label>
-              <input
-                type="text"
-                id="ksk"
-                name="ksk"
-                value={formData.ksk}
-                onChange={handleKskChange}
-                className="leoni-input leoni-input-casca"
-                placeholder={t("optional")}
-                style={{ width: "100px", textAlign: "center" }}
-              />
-            </div>
-          </div>
+          <div className="leoni-header-actions" />
         </div>
 
         <div className="ef-page">

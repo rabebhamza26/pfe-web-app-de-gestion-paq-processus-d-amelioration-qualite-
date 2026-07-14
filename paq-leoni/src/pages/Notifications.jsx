@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";  // ✅ Ajout de l'import manquant
 import { notificationService } from "../services/api";
-import { useI18n } from "../context/I18nContext";
 import "../styles/Notifications.css";
 
 export default function Notifications({ matricule: propMatricule }) {
@@ -9,7 +8,7 @@ export default function Notifications({ matricule: propMatricule }) {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all"); // all, unread
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const t = (key) => key;
 
   useEffect(() => {
     loadNotifications();

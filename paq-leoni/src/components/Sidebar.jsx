@@ -1,13 +1,12 @@
 import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { useI18n } from "../context/I18nContext";
 import "../styles/sidebar.css";
 
 function Sidebar() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { t } = useI18n();
+  const t = (key) => key;
 
   // Vérifier si l'utilisateur a le rôle SL
   const isSL = user?.role === "SL";

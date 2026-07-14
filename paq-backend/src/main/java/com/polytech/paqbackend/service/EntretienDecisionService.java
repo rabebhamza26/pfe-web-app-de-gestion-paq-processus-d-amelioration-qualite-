@@ -23,6 +23,8 @@ import java.util.*;
 @Transactional
 public class EntretienDecisionService {
 
+    // Service métier pour les entretiens de décision.
+    // Il contient la logique de création, modification, validation et notification.
     private static final Logger log = LoggerFactory.getLogger(EntretienDecisionService.class);
 
     private final EntretienDecisionRepository repo;

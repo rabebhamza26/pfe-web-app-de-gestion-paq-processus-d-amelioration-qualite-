@@ -2,10 +2,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { userService, siteService, plantService, getSegments } from "../../services/api";
-import { useI18n } from "../../context/I18nContext";
 
 export default function EditUser() {
-  const { t } = useI18n();
+  const t = (key) => key;
   const { id } = useParams();
 
   const roles = [

@@ -41,8 +41,8 @@ function Navbar() {
         <div className="navbar-left">
           <div className="navbar-logo">
             <div className="navbar-title">
-              <h2>{t("app_name")}</h2>
-              <span>{t("app_tagline")}</span>
+              <h2>{"PAQ Web System"}</h2>
+              <span>{"Processus d'amélioration qualité"}</span>
             </div>
           </div>
         </div>
@@ -66,8 +66,8 @@ function Navbar() {
       <div className="navbar-left">
         <div className="navbar-logo">
           <div className="navbar-title">
-            <h2>{t("app_name")}</h2>
-            <span>{t("app_tagline")}</span>
+           <h2>{"PAQ Web System"}</h2>
+              <span>{"Processus d'amélioration qualité"}</span>
           </div>
         </div>
       </div>

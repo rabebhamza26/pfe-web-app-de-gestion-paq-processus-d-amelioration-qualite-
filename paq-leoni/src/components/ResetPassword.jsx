@@ -2,14 +2,14 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { passwordResetService } from "../services/api";
-import { useI18n } from "../context/I18nContext";
 import { showSuccessAlert, showErrorAlert } from "../utils/entretienAlerts";
 import "../styles/reset-password.css";
 
+// Page de réinitialisation du mot de passe après réception du lien.
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const t = (key) => key;
   
   const token = searchParams.get('token');
   
@@ -33,6 +33,7 @@ export default function ResetPassword() {
     checkPasswordStrength(newPassword);
   }, [newPassword]);
 
+  // Vérifie la validité du token de réinitialisation.
   const validateToken = async () => {
     if (!token) {
       await showErrorAlert(t("invalid_link"), t("no_token_provided"));
@@ -58,6 +59,7 @@ export default function ResetPassword() {
   };
 
 
+// Évalue la solidité du mot de passe saisi par l'utilisateur.
 const checkPasswordStrength = (password) => {
   if (!password) {
     setPasswordStrength({ score: 0, message: "" });
@@ -93,6 +95,7 @@ const checkPasswordStrength = (password) => {
   });
 };
 
+  // Soumet le nouveau mot de passe si toutes les validations passent.
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -191,8 +194,8 @@ const checkPasswordStrength = (password) => {
   }
 
   return (
-    <div className="rp-container">
-      <div className="rp-card">
+    <div className="rp-container animate-fade-in">
+      <div className="rp-card animate-scale-in">
         <div className="rp-header">
           <h2>{t("reset_password")}</h2>
           <p>{t("choose_new_password")}</p>

@@ -4,19 +4,20 @@ import React, { useState } from "react";
 import { passwordResetService } from "../services/api";
 
 import { showErrorAlert, showSuccessAlert } from "../utils/entretienAlerts";
-import { useI18n } from "../context/I18nContext";
 
 import "../styles/forgot-password-modal.css";
 
 
 
+// Modal de récupération de mot de passe.
 export default function ForgotPasswordModal({ isOpen, onClose }) {
-  const { t } = useI18n();
+  const t = (key) => key;
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
+  // Envoie la demande de réinitialisation si l'email est valide.
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -71,8 +72,8 @@ export default function ForgotPasswordModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fpm-overlay" onClick={handleClose}>
-      <div className="fpm-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="fpm-overlay animate-fade-in" onClick={handleClose}>
+      <div className="fpm-modal animate-scale-in" onClick={(e) => e.stopPropagation()}>
         <div className="fpm-header">
           <h3>{t("forgot_password")}</h3>
           <button className="fpm-close" onClick={handleClose}>×</button>

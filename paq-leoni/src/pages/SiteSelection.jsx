@@ -70,8 +70,8 @@ export default function SiteSelection() {
         {/* Header */}
         <header className="ss-hero">
         
-          <h1 className="ss-hero-title">{t("app_name")}</h1>
-          <p className="ss-hero-sub">{t("app_tagline")}</p>
+          <h1 className="ss-hero-title">{"PAQ Web System"}</h1>
+          <p className="ss-hero-sub">{"Processus d'amélioration qualité"}</p>
         </header>
 
         {/* Section title */}

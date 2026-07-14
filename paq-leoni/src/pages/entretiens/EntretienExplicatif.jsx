@@ -16,7 +16,6 @@ const buildDefaultForm = () => ({
   mesuresCorrectives: "",
   commentaire: "",
   defautGrave: false,
-  ksk: "", // NOUVEAU - KSK optionnel
 });
 
 export default function EntretienExplicatif({ niveau = 1 }) {
@@ -122,7 +121,6 @@ export default function EntretienExplicatif({ niveau = 1 }) {
       mesuresCorrectives: entretien.mesuresCorrectives || "",
       commentaire: entretien.commentaire || "",
       defautGrave: entretien.defautGrave || false,
-      ksk: entretien.ksk || "", // NOUVEAU - Récupérer la valeur KSK
     });
     
     if (entretien.typeFaute && !typeOptions.includes(entretien.typeFaute)) {
@@ -141,18 +139,7 @@ export default function EntretienExplicatif({ niveau = 1 }) {
     setFormData({ ...formData, [name]: value });
   };
 
-  // Gestion spécifique pour le champ KSK (numérique)
-  const handleKskChange = (e) => {
-    if (!canModify) {
-      showErrorAlert("Permission refusée", "Seuls les SL et SGL peuvent modifier un entretien.");
-      return;
-    }
-    const value = e.target.value;
-    // Permettre les nombres positifs, négatifs, décimaux, ou vide
-    if (value === "" || value === "-" || /^-?\d*\.?\d*$/.test(value)) {
-      setFormData({ ...formData, ksk: value });
-    }
-  };
+
 
   const addTypeOption = async () => {
     if (!canModify) {
@@ -223,7 +210,6 @@ export default function EntretienExplicatif({ niveau = 1 }) {
         description: formData.description,
         mesuresCorrectives: formData.mesuresCorrectives,
         defautGrave: formData.defautGrave,
-        ksk: formData.ksk ? parseFloat(formData.ksk) : null, // NOUVEAU
       };
 
       const response = await entretienService.create(matricule, entretienData);
@@ -267,7 +253,6 @@ export default function EntretienExplicatif({ niveau = 1 }) {
         description: formData.description,
         mesuresCorrectives: formData.mesuresCorrectives,
         defautGrave: formData.defautGrave,
-        ksk: formData.ksk ? parseFloat(formData.ksk) : null, // NOUVEAU
       };
 
       await entretienService.update(matricule, currentEntretienId, entretienData);
@@ -376,23 +361,6 @@ export default function EntretienExplicatif({ niveau = 1 }) {
         </div>
 
         <div className="leoni-header-actions">
-          {/* NOUVEAU : Champ KSK dans l'en-tête */}
-          <div className="leoni-casca-field">
-            <label htmlFor="ksk" className="leoni-casca-label">
-              KSK
-            </label>
-            <input
-              type="text"
-              id="ksk"
-              name="ksk"
-              value={formData.ksk}
-              onChange={handleKskChange}
-              className="leoni-input leoni-input-casca"
-              placeholder="Optionnel"
-              disabled={!canModify || isValidated}
-              style={{ width: "100px", textAlign: "center" }}
-            />
-          </div>
 
           {isSGL && !isSL && (
             <span className="leoni-badge leoni-badge-warning">Mode SGL - Validation requise</span>

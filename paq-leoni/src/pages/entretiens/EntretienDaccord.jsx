@@ -148,7 +148,6 @@ const buildDefaultForm = () => ({
   dateEntretien: new Date().toISOString().split("T")[0],
   causeFaute: "",
   mesuresProposees: "",
-  ksk: "", // Champ KSK optionnel
 });
 
 // ─── Composant principal ──────────────────────────────────────────────────────
@@ -320,7 +319,6 @@ const loadQMEmails = async () => {
       dateEntretien: entretien.date || new Date().toISOString().split("T")[0],
       causeFaute: entretien.causeFaute || "",
       mesuresProposees: entretien.mesuresProposees || "",
-      ksk: entretien.ksk || "", // Charger KSK
     });
     if (entretien.typeFaute && !typeOptions.includes(entretien.typeFaute)) {
       setTypeOptions(prev => [...prev, entretien.typeFaute]);
@@ -349,17 +347,7 @@ const loadQMEmails = async () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Gestion spécifique pour le champ KSK (numérique)
-  const handleKskChange = (e) => {
-    if (!canModify && userRole !== "QM_SEGMENT") {
-      showErrorAlert("Permission refusée", "Vous n'avez pas les droits.");
-      return;
-    }
-    const value = e.target.value;
-    if (value === "" || value === "-" || /^-?\d*\.?\d*$/.test(value)) {
-      setFormData(prev => ({ ...prev, ksk: value }));
-    }
-  };
+
 
   // ── Bouton MODIFIER ──
   const handleModifier = async () => {
@@ -414,7 +402,6 @@ const handleSLValidation = async (destinatairesEmails) => {
       causeFaute: formData.causeFaute,
       mesuresProposees: formData.mesuresProposees || "",
       destinataireEmail: destinataireEmailString,
-      ksk: formData.ksk ? parseFloat(formData.ksk) : null,
     };
 
     let entretienId = currentEntretienId;
@@ -460,9 +447,8 @@ const handleSLValidation = async (destinatairesEmails) => {
     
     // Afficher un message avec plus de détails
     await showSuccessAlert(
-      "Entretien soumis", 
+      "Entretien enregistré", 
       "L'email de convocation a été envoyé aux QM-Segment sélectionnés."
-     
     );
     
     localStorage.removeItem(`entretien-daccord-draft-${matricule}`);
@@ -496,7 +482,6 @@ const handleSLValidation = async (destinatairesEmails) => {
         date: formData.dateEntretien,
         causeFaute: formData.causeFaute,
         mesuresProposees: formData.mesuresProposees || "",
-        ksk: formData.ksk ? parseFloat(formData.ksk) : null, // Envoyer KSK
       };
 
       await entretienDaccordService.validerFinale(matricule, currentEntretienId, entretienData);
@@ -626,23 +611,6 @@ const handleSLValidation = async (destinatairesEmails) => {
         </div>
 
         <div className="leoni-header-actions">
-          {/* Champ KSK dans l'en-tête */}
-          <div className="leoni-casca-field">
-            <label htmlFor="ksk" className="leoni-casca-label">
-              KSK
-            </label>
-            <input
-              type="text"
-              id="ksk"
-              name="ksk"
-              value={formData.ksk}
-              onChange={handleKskChange}
-              className="leoni-input leoni-input-casca"
-              placeholder="Optionnel"
-              disabled={valideQM || (!isEditable && userRole !== "QM_SEGMENT")}
-              style={{ width: "100px", textAlign: "center" }}
-            />
-          </div>
 
           {/* Badges de statut */}
           {userRole === "SL" && !currentEntretienId && !valideQM && (

@@ -303,17 +303,14 @@ export default function AddCollaborator() {
                                     disabled={loading} 
                                     className="btn btn-primary"
                                 >
-                                    {loading ? (
-                                        <>
-                                            <span className="spinner-border spinner-border-sm me-2"></span>
-                                            Enregistrement...
-                                        </>
-                                    ) : (
-                                        <>
+                                    <span className="d-flex align-items-center justify-content-center">
+                                        {loading ? (
+                                            <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                                        ) : (
                                             <i className="fas fa-save me-2"></i>
-                                            Ajouter
-                                        </>
-                                    )}
+                                        )}
+                                        <span>{loading ? "Enregistrement..." : "Ajouter"}</span>
+                                    </span>
                                 </button>
                                 <button 
                                     type="button" 

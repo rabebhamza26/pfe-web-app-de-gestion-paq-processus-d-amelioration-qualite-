@@ -8,6 +8,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 public class PaqBackendApplication {
 
+    // Point d'entrée principal de l'application Spring Boot.
+    // Cette classe démarre le serveur et active la planification des tâches.
     public static void main(String[] args) {
         SpringApplication.run(PaqBackendApplication.class, args);
     }
