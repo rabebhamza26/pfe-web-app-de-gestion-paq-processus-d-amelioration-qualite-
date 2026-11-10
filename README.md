@@ -1,6 +1,7 @@
 Application Web de Digitalisation du Processus d'Amélioration de la Qualité (PAQ)
 
 📌 Présentation
+
 Cette application web a été développée dans le cadre de mon Projet de Fin d'Études (PFE). Elle a pour objectif de digitaliser le Processus d'Amélioration de la Qualité (PAQ) au sein de l'entreprise, en remplaçant le suivi papier par un système numérique centralisé, sécurisé et collaboratif.
 
 L'application permet de gérer l'ensemble du cycle de vie des dossiers PAQ : de la création du dossier d'un collaborateur jusqu'à son archivage automatique, en passant par la planification et le suivi des entretiens, avec des notifications en temps réel.
@@ -53,6 +54,7 @@ Notifications en temps réel via WebSocket
 Notifications par email pour les événements clés
 
 📊 Tableau de bord analytique
+
 Visualisation des indicateurs clés (KPI)
 
 Suivi de l'avancement des dossiers PAQ
@@ -65,6 +67,7 @@ Archivage automatique des dossiers PAQ clôturés
 Conservation et consultation des archives
 
 🛠 Stack technologique
+
 -Frontend
 Technologie	Usage
 React	Framework JavaScript pour l'interface utilisateur
